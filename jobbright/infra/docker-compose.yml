@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: jobbright_db
+    environment:
+      # Use environment variables for sensitive data in production
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - jobbright_net
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-user} -d $${POSTGRES_DB:-db}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: jobbright_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - jobbright_net
+    healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        
+  qdrant:
+    image: qdrant/qdrant:latest # Use a specific version in production
+    container_name: jobbright_qdrant
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "6334:6334" # gRPC port
+    volumes:
+      - qdrant_data:/qdrant/storage # Persist data
+    networks:
+      - jobbright_net
+    # Qdrant doesn't have a simple healthcheck command readily available
+
+  backend:
+    build:
+      context: ../backend # Path relative to docker-compose.yml
+      dockerfile: Dockerfile
+    container_name: jobbright_backend
+    env_file:
+      - ../backend/.env # Load environment variables from .env file
+    environment:
+      # Override specific variables if needed, or ensure they are in .env
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:password@db:5432/db}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+      # SECRET_KEY: loaded from .env
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db: 
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant: # Qdrant might take a bit to start, simple depends_on for now
+        condition: service_started
+    volumes:
+      # Mount code for development with hot-reloading (enabled in Dockerfile CMD)
+      - ../backend:/app
+    networks:
+      - jobbright_net
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: jobbright_worker
+    command: celery -A app.workers.celery_app worker --loglevel=info -Q celery # Specify default queue
+    env_file:
+      - ../backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:password@db:5432/db}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+    depends_on:
+      backend: # Worker depends on backend code & potentially services it calls
+        condition: service_started # Or depends on db/redis directly
+      redis:
+        condition: service_healthy
+      qdrant:
+         condition: service_started
+    volumes:
+       # Mount code for development consistency
+      - ../backend:/app
+    networks:
+      - jobbright_net
+
+volumes:
+  postgres_data:
+  qdrant_data:
+
+networks:
+  jobbright_net:
+    driver: bridge 

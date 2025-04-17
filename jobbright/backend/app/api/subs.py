@@ -1,0 +1,1 @@
+# Placeholder for Subscription API endpoints (Stripe Integration, etc.) 
