@@ -59,7 +59,7 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
       style={style} 
       {...attributes} 
       {...listeners} 
-      className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 p-4 border border-grey-20 rounded-design-md bg-white shadow-1 transition-all duration-150 ease-out hover:shadow-md hover:border-primary-500/20 hover:-translate-y-px touch-none" // Use rounded-design-md, Added touch-none
+      className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 p-4 border border-border rounded-design-md bg-card shadow-1 transition-all duration-150 ease-out hover:shadow-md hover:border-primary/20 hover:-translate-y-px touch-none" // Use theme classes: border-border, bg-card, hover:border-primary/20
     >
       {/* Column 1: Logo */}
       <div className="flex-shrink-0">
@@ -68,16 +68,16 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
           alt={`${companyName} logo`} 
           width={56} 
           height={56} 
-          className="rounded-md object-contain border border-grey-20"
+          className="rounded-md object-contain border border-border" // Use theme class: border-border
           onError={(e) => (e.currentTarget.src = defaultLogo)} // Fallback
         />
       </div>
  
       {/* Column 2: Job Meta */}
       <div className="overflow-hidden">
-        <p className="font-bold text-grey-90 truncate" title={companyName}>{companyName}</p> {/* Changed to font-bold */}
-        <p className="text-grey-90 truncate" title={jobTitle}>{jobTitle}</p>
-        {location && <p className="text-sm text-grey-40 truncate" title={location}>{location}</p>}
+        <p className="font-bold text-card-foreground truncate" title={companyName}>{companyName}</p> {/* Use theme class: text-card-foreground */}
+        <p className="text-card-foreground truncate" title={jobTitle}>{jobTitle}</p> {/* Use theme class: text-card-foreground */}
+        {location && <p className="text-sm text-muted-foreground truncate" title={location}>{location}</p>} {/* Use theme class: text-muted-foreground */}
       </div>
 
       {/* Column 3: Stage Badge & CTA */}
@@ -90,7 +90,7 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
             variant="ghost" 
             size="sm" 
             asChild // Use asChild if linking with Next.js Link
-            className="text-primary-500 hover:text-primary-600 hover:bg-primary-500/10 h-8 px-3"
+            className="h-8 px-3" // Rely on ghost variant for colors
             // Prevent button click from triggering drag
             onClick={(e) => e.stopPropagation()} 
             onMouseDown={(e) => e.stopPropagation()}

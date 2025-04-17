@@ -54,7 +54,8 @@ export function Navbar() {
               <Button onClick={handleSignIn} variant="ghost">
                 Sign In
               </Button>
-              <Button onClick={handleSignUp}>
+              {/* Ensure Sign Up uses the default primary variant */}
+              <Button onClick={handleSignUp} variant="default"> 
                 Sign Up
               </Button>
             </>

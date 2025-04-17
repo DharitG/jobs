@@ -24,7 +24,8 @@ export function DailyStreak({ initialStreak = 0 }: DailyStreakProps) {
           <CardTitle className="text-lg font-semibold">Daily Streak</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-6">
-          <div className="h-10 w-20 bg-grey-20 rounded-md"></div>
+          {/* Use muted background for skeleton */}
+          <div className="h-10 w-20 bg-muted rounded-md"></div> 
         </CardContent>
       </Card>
     );
@@ -49,12 +50,15 @@ export function DailyStreak({ initialStreak = 0 }: DailyStreakProps) {
         <CardTitle className="text-lg font-semibold">Daily Streak</CardTitle>
       </CardHeader>
       <CardContent className="flex items-center justify-center p-6">
-        <Flame className={`h-8 w-8 mr-2 ${streakCount > 0 ? 'text-warning' : 'text-grey-40'}`} />
-        <span className="text-3xl font-bold text-grey-90">{streakCount}</span>
-        <span className="text-sm text-grey-40 ml-1.5">days</span>
+        {/* Use muted-foreground for inactive icon */}
+        <Flame className={`h-8 w-8 mr-2 ${streakCount > 0 ? 'text-warning' : 'text-muted-foreground'}`} /> 
+        {/* Use card-foreground for count */}
+        <span className="text-3xl font-bold text-card-foreground">{streakCount}</span> 
+        {/* Use muted-foreground for "days" text */}
+        <span className="text-sm text-muted-foreground ml-1.5">days</span> 
       </CardContent>
       {/* Optional: Add encouragement message based on streak */}
-      {/* <CardFooter> <p className="text-xs text-center text-grey-40">Keep it up!</p> </CardFooter> */}
+      {/* <CardFooter> <p className="text-xs text-center text-muted-foreground">Keep it up!</p> </CardFooter> */}
     </Card>
   );
 }

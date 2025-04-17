@@ -31,6 +31,8 @@ export function ProgressMeter({ currentStage, className }: ProgressMeterProps) {
   const percentage = getProgressPercentage(currentStage);
 
   // Design System: Horizontal bar, 4 segments (represented by width)
+  // TODO: Visually represent the 4 distinct segments (Applied, Screening, Interview, Offer)
+  // TODO: Implement animated gradient sweep on stage change as per design system
   return (
     <div 
       className={cn("w-full bg-grey-20 rounded-full h-2.5 overflow-hidden shadow-inner", className)} 
@@ -40,12 +42,11 @@ export function ProgressMeter({ currentStage, className }: ProgressMeterProps) {
         className={cn(
           "h-full rounded-full transition-all duration-500 ease-out",
           currentStage === 'Rejected' ? 'bg-error' : 'bg-primary-500' // Use error color if rejected
-          // Add gradient sweep animation class here later if implemented
+          // Missing gradient sweep animation class
         )}
         style={{ width: `${percentage}%` }} 
       />
-      {/* Removed segment mapping logic */}
-      {/* Removed optional text labels */}
+      {/* Missing segment representation */}
     </div>
   );
 }

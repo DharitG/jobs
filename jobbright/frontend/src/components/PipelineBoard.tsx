@@ -47,13 +47,15 @@ interface PipelineBoardProps {
 
 // Helper component for each column (makes managing sortable context easier)
 function PipelineColumn({ stage, applications }: { stage: ApplicationStage, applications: ApplicationItem[] }) {
+  // TODO: Implement conditional drop shadow on header based on scroll position within the column's content area.
   return (
-    <div className="flex-shrink-0 w-72 bg-grey-05 rounded-design-md shadow-sm"> {/* Use design radius */}
+    <div className="flex-shrink-0 w-72 bg-muted rounded-design-md shadow-sm"> {/* Use theme class: bg-muted */}
       {/* Sticky Header */}
-      <div className="sticky top-0 z-10 p-3 bg-grey-05 rounded-t-design-md border-b border-grey-20 shadow-sm"> {/* Use design radius */}
-        <h3 className="text-sm font-semibold text-grey-90 flex justify-between items-center">
+      <div className="sticky top-0 z-10 p-3 bg-muted rounded-t-design-md border-b border-border shadow-sm"> {/* Use theme classes: bg-muted, border-border */}
+        <h3 className="text-sm font-semibold text-foreground flex justify-between items-center"> {/* Use theme class: text-foreground */}
           <span>{stage}</span>
-          <span className="text-xs font-normal bg-grey-20 text-grey-90 rounded-full px-2 py-0.5">
+          {/* Use muted background and foreground for count badge */}
+          <span className="text-xs font-normal bg-background text-muted-foreground rounded-full px-2 py-0.5 border border-border"> 
             {applications.length}
           </span>
         </h3>
@@ -64,7 +66,8 @@ function PipelineColumn({ stage, applications }: { stage: ApplicationStage, appl
         items={applications.map(app => app.id)} 
         strategy={verticalListSortingStrategy}
       >
-        <div className="p-3 space-y-3 h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-grey-40 scrollbar-track-grey-20/50"> 
+        {/* Use theme classes for scrollbar */}
+        <div className="p-3 space-y-3 h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground scrollbar-track-border/50"> 
           {applications.length > 0 ? (
             applications.map(app => (
               <JobCard 
@@ -79,7 +82,7 @@ function PipelineColumn({ stage, applications }: { stage: ApplicationStage, appl
               />
             ))
           ) : (
-            <div className="text-center text-sm text-grey-40 py-4">
+            <div className="text-center text-sm text-muted-foreground py-4"> {/* Use theme class: text-muted-foreground */}
               Drop jobs here
             </div>
           )}
@@ -291,7 +294,8 @@ export function PipelineBoard({ initialApplications }: PipelineBoardProps) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-grey-40 scrollbar-track-grey-20">
+      {/* Use theme classes for scrollbar */}
+      <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-muted-foreground scrollbar-track-border">
         {pipelineStages.map(stage => (
            // Pass stage id to make column itself a droppable container
           <PipelineColumn key={stage} stage={stage} applications={groupedApplications[stage] || []} />
