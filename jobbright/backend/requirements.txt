@@ -9,6 +9,7 @@ psycopg2-binary
 alembic
 celery[redis]
 python-jose[cryptography]
+httpx # Added for async requests in Auth0 validation
 requests
 beautifulsoup4
 playwright

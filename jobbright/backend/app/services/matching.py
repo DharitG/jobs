@@ -2,80 +2,129 @@ from sentence_transformers import SentenceTransformer
 import qdrant_client
 import numpy as np
 from typing import List, Dict, Tuple
+import logging # Added
+from qdrant_client.http.models import Distance, VectorParams, PointStruct, UpdateStatus # Added
 
 from ..core.config import settings
 from .. import models, schemas # Assuming we might work with models/schemas
 
+# Setup logger
+logger = logging.getLogger(__name__) # Added
+
 # Initialize model and DB client (consider lazy loading or dependency injection)
 try:
     model = SentenceTransformer("all-MiniLM-L6-v2")
+    VECTOR_SIZE = model.get_sentence_embedding_dimension() # Added
 except Exception as e:
-    print(f"Warning: Could not load SentenceTransformer model: {e}")
+    logger.warning(f"Could not load SentenceTransformer model: {e}") # Updated print to logger
     model = None
+    VECTOR_SIZE = 384 # Added fallback
+
+JOB_COLLECTION = "jobs" # Added collection name
 
 try:
     # Ensure Qdrant client uses config
     qdrant_db = qdrant_client.QdrantClient(
-        host=settings.QDRANT_HOST, 
+        host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT
+        # Consider adding api_key=settings.QDRANT_API_KEY if using authentication
     )
-    # TODO: Add check for collection existence / creation
+    # Check and create collection if it doesn't exist
+    try:
+        qdrant_db.get_collection(collection_name=JOB_COLLECTION)
+        logger.info(f"Qdrant collection '{JOB_COLLECTION}' already exists.")
+    except Exception as e: # Catch specific exception if possible (e.g., collection not found)
+        logger.warning(f"Qdrant collection '{JOB_COLLECTION}' not found, attempting to create it. Error: {e}")
+        try:
+            qdrant_db.create_collection(
+                collection_name=JOB_COLLECTION,
+                vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
+            )
+            logger.info(f"Successfully created Qdrant collection '{JOB_COLLECTION}'.")
+        except Exception as create_e:
+            logger.error(f"Failed to create Qdrant collection '{JOB_COLLECTION}': {create_e}")
+            qdrant_db = None # Mark client as unusable if collection setup fails
+
 except Exception as e:
-    print(f"Warning: Could not connect to Qdrant: {e}")
+    logger.warning(f"Could not connect to Qdrant or setup collection: {e}") # Updated print to logger
     qdrant_db = None
 
 def get_embedding(text: str) -> List[float] | None:
     """Generates embedding for a given text."""
     if not model:
-        print("Error: SentenceTransformer model not loaded.")
+        logger.error("SentenceTransformer model not loaded.") # Use logger
         return None
     try:
+        # Ensure text is not empty or just whitespace
+        if not text or text.isspace(): # Added check
+            logger.warning("Attempted to get embedding for empty text.")
+            return None
         vector = model.encode(text).tolist() # Convert numpy array to list
         return vector
     except Exception as e:
-        print(f"Error generating embedding: {e}")
+        logger.error(f"Error generating embedding: {e}") # Use logger
         return None
 
-def rank_jobs(resume_text: str, jobs: List[Dict]) -> List[Tuple[Dict, float]]:
-    """Ranks jobs based on cosine similarity to resume text embedding."""
-    if not model:
-        print("Error: SentenceTransformer model not loaded. Cannot rank jobs.")
-        return [(job, 0.0) for job in jobs] # Return jobs with 0 score
-        
-    resume_vec = model.encode(resume_text)
-    
-    # Assume jobs is a list of dicts, each having an 'embedding' key
-    # Filter out jobs without valid embeddings
-    valid_jobs = [j for j in jobs if j.get('embedding') and isinstance(j['embedding'], list)]
-    if not valid_jobs:
-        print("Warning: No jobs with valid embeddings found for ranking.")
-        return [(job, 0.0) for job in jobs]
-        
-    job_vecs = np.array([j["embedding"] for j in valid_jobs])
-    
-    # Calculate cosine similarity
-    # Ensure vectors are numpy arrays for calculation
-    resume_vec_np = np.array(resume_vec)
-    job_vecs_np = np.array(job_vecs)
-    
-    norm_resume = np.linalg.norm(resume_vec_np)
-    norm_jobs = np.linalg.norm(job_vecs_np, axis=1)
-    
-    # Avoid division by zero if norms are zero
-    if norm_resume == 0 or np.any(norm_jobs == 0):
-        print("Warning: Zero norm vector encountered during similarity calculation.")
-        scores = np.zeros(len(valid_jobs))
-    else:
-        scores = job_vecs_np @ resume_vec_np / (norm_jobs * norm_resume)
-        
-    # Combine valid jobs with scores
-    ranked_valid_jobs = sorted(zip(valid_jobs, scores), key=lambda x: x[1], reverse=True)
-    
-    # Include jobs that couldn't be ranked (e.g., missing embedding) at the end with score 0
-    unranked_jobs = [(job, 0.0) for job in jobs if job not in valid_jobs]
-    
-    return ranked_valid_jobs + unranked_jobs
+# Old rank_jobs function removed, replaced by Qdrant search
 
-# TODO:
-# - Add function to index job embeddings into Qdrant
-# - Add function to search Qdrant for similar jobs based on resume embedding 
+def index_job(job: models.Job, job_embedding: List[float]):
+    """Indexes a job's embedding and metadata into Qdrant."""
+    if not qdrant_db:
+        logger.error("Qdrant client not available. Cannot index job.")
+        return False
+    if not job_embedding:
+        logger.warning(f"No embedding provided for job ID {job.id}. Skipping indexing.")
+        return False
+
+    try:
+        operation_info = qdrant_db.upsert(
+            collection_name=JOB_COLLECTION,
+            wait=True, # Wait for operation to complete for confirmation
+            points=[
+                PointStruct(
+                    id=job.id,
+                    vector=job_embedding,
+                    payload={
+                        "title": job.title,
+                        "company_name": job.company_name,
+                        "location": job.location,
+                        # Add other filterable/retrievable fields as needed
+                        # "posted_date": job.posted_date.isoformat() if job.posted_date else None,
+                    }
+                )
+            ]
+        )
+        if operation_info.status == UpdateStatus.COMPLETED:
+            logger.info(f"Successfully indexed/updated job ID {job.id} in Qdrant.")
+            return True
+        else:
+            logger.warning(f"Qdrant upsert operation for job ID {job.id} finished with status: {operation_info.status}")
+            return False
+    except Exception as e:
+        logger.error(f"Error indexing job ID {job.id} in Qdrant: {e}")
+        return False
+
+def search_similar_jobs(resume_embedding: List[float], limit: int = 10) -> List[Tuple[int, float]]:
+    """Searches Qdrant for jobs similar to the given resume embedding."""
+    if not qdrant_db:
+        logger.error("Qdrant client not available. Cannot search for jobs.")
+        return []
+    if not resume_embedding:
+        logger.error("Cannot search for jobs with an empty resume embedding.")
+        return []
+
+    try:
+        search_result = qdrant_db.search(
+            collection_name=JOB_COLLECTION,
+            query_vector=resume_embedding,
+            limit=limit
+            # Add query_filter here if needed, e.g., based on location, keywords in payload
+            # query_filter=models.Filter(...)
+        )
+        # Results are ScoredPoint objects: id, version, score, payload, vector
+        ranked_jobs = [(hit.id, hit.score) for hit in search_result]
+        logger.info(f"Found {len(ranked_jobs)} similar jobs in Qdrant.")
+        return ranked_jobs
+    except Exception as e:
+        logger.error(f"Error searching for similar jobs in Qdrant: {e}")
+        return []

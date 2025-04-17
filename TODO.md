@@ -25,7 +25,7 @@ Based on `vision.md`.
 *   ✅ Create `backend/app/core/` directory
 *   ✅ Create `backend/app/core/__init__.py`
 *   ✅ Create `backend/app/core/config.py` (Pydantic settings)
-*   ✅ Create `backend/app/core/security.py` (Password/JWT utils)
+*   ✅ Create `backend/app/core/security.py` (Auth0 validation utils added)
 *   ✅ Create `backend/app/api/` directory
 *   ✅ Create `backend/app/api/__init__.py`
 *   ✅ Create `backend/app/api/auth.py` (Token endpoint implemented)
@@ -106,16 +106,16 @@ Based on `vision.md`.
 *   ✅ Implement Pydantic settings (`core/config.py`)
 *   ✅ Implement DB Session management (`db/session.py`)
 *   ⬜ ~~Implement Password Hashing & JWT (`core/security.py`)~~ (Using Auth0)
-*   ⬜ Define User DB Model (`models/user.py`) - (Needs update: Remove password, add Auth0 `sub`)
-*   ⬜ Define User Pydantic Schemas (`schemas/user.py`) - (Needs update: Remove password)
-*   ⬜ Implement User CRUD operations (`crud/user.py`) - (Needs update: Adapt for Auth0 `sub`, remove password handling)
-*   ⬜ ~~Implement Token generation endpoint (`api/auth.py`)~~ (Handled by Auth0)
-*   ⬜ Implement Auth0 Backend Token Validation Middleware
-*   ⬜ ~~Integrate Auth router (`main.py`)~~ (Replaced by middleware)
-*   ⬜ ~~Implement User registration endpoint (`api/auth.py`)~~ (Handled by Auth0)
+*   ✅ Define User DB Model (`models/user.py`) - (Verified: Auth0 `sub` added, password removed)
+*   ✅ Define User Pydantic Schemas (`schemas/user.py`) - (Verified: Auth0 `sub` added, password removed)
+*   ✅ Implement User CRUD operations (`crud/user.py`) - (Verified: Adapted for Auth0 `sub`, password handling removed)
+*   ✅ ~~Implement Token generation endpoint (`api/auth.py`)~~ (Handled by Auth0)
+*   ✅ Implement Auth0 Backend Token Validation Middleware (`core/security.py`)
+*   ✅ ~~Integrate Auth router (`main.py`)~~ (Replaced by middleware)
+*   ✅ ~~Implement User registration endpoint (`api/auth.py`)~~ (Handled by Auth0)
 *   ✅ Implement User profile endpoints (`api/users.py` - e.g., get current user, update)
-    *   ✅ Implement GET `/users/me` endpoint (Needs Auth0 protection)
-    *   ✅ Implement PUT `/users/me` endpoint (Needs Auth0 protection)
+    *   ✅ Implement GET `/users/me` endpoint (Auth0 protection applied)
+    *   ✅ Implement PUT `/users/me` endpoint (Auth0 protection applied)
 *   ⬜ Implement Role-based access control (RBAC) foundation (Can leverage Auth0 roles/permissions)
 *   ⬜ ~~Implement Google Sign-in (backend)~~ (Handled by Auth0)
 
@@ -135,11 +135,11 @@ Based on `vision.md`.
     *   ⬜ Lever adapter
 *   ✅ Implement Job Matching Engine (`services/matching.py` - Basic structure, needs integration)
         *   ✅ Integrate SentenceTransformer model (basic load)
-        *   ✅ Integrate Qdrant client (basic connection)
-        *   ✅ Implement embedding generation for resumes & JDs (Basic func exists, integrated in CRUD)
-        *   ✅ Implement job ranking logic (Basic func exists)
-        *   ⬜ Implement Qdrant indexing for jobs/resumes
-        *   ⬜ Implement Qdrant search for job matching
+        *   ✅ Integrate Qdrant client (basic connection & collection check/creation)
+        *   ✅ Implement embedding generation for resumes & JDs (`get_embedding` updated)
+        *   ✅ Implement job ranking logic (Replaced by Qdrant search)
+        *   ✅ Implement Qdrant indexing for jobs/resumes (`index_job` function added)
+        *   ✅ Implement Qdrant search for job matching (`search_similar_jobs` function added)
 
 ### Application Tracking & Auto-Apply
 *   ✅ Define Application/Tracking Model (`models/application.py`)
@@ -150,7 +150,7 @@ Based on `vision.md`.
 *   ⬜ Implement Auto-apply service (`services/autosubmit.py`)
     *   🚧 Setup Playwright/browser automation (Initial structure created)
     *   🚧 Implement background task queuing (`workers/tasks.py` - Celery app and task defined)
-    *   🚧 Implement rate limiting/quota logic for free tier (50/mo) (User tier added, quota check func created)
+    *   ✅ Implement rate limiting/quota logic for free tier (50/mo) (`check_user_quota` implemented and integrated into `apply_to_job`)
 
 ### Database
 *   ✅ Setup Alembic for migrations (Manual setup)
@@ -185,7 +185,7 @@ Based on `vision.md`.
 
 ### Free Tier Enhancements
 *   🚧 Implement Daily Streak Gamification (UI + Backend logic) (UI component `DailyStreak.tsx` created and added to dashboard, blocked by backend/tRPC)
-*   ⬜ Implement VisaPulse Backend Service (`services/visa_alerts.py`?)
+*   ✅ Implement VisaPulse Backend Service (`services/visa_alerts.py` created with placeholder, API endpoint added in `api/visa.py` and included in `main.py`)
 *   ✅ Implement VisaPulse UI (`components/VisaPulse.tsx`, 7-day history limit)
     *   ✅ Create basic `VisaPulse.tsx` component structure
     *   ✅ Connect component to backend data/service (via tRPC)
