@@ -27,10 +27,11 @@ describe('DailyStreak Component', () => {
     render(<DailyStreak initialStreak={3} />);
     
     // Check for the presence of the icon (using title or role might be better if available)
-    // For now, we check if an SVG element is rendered within the component scope.
-    // A more robust test might involve checking the icon's path data or adding a test ID.
-    const icon = screen.getByRole('img', { hidden: true }); // Lucide icons might not have accessible roles by default
-    expect(icon).toBeInTheDocument(); 
+    // Find the icon using the data-testid attribute
+    const icon = screen.getByTestId('flame-icon');
+    expect(icon).toBeInTheDocument();
+    // Check if it's an SVG element
+    expect(icon.tagName.toLowerCase()).toBe('svg');
   });
 
   // TODO: Add tests for loading and error states when tRPC query is implemented

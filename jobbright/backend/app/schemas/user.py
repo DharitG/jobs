@@ -1,32 +1,34 @@
 from pydantic import BaseModel, EmailStr
+from datetime import datetime
 
 from ..models.user import SubscriptionTier # Import the enum
 
 # Shared properties
 class UserBase(BaseModel):
+    auth0_sub: str # Added Auth0 Subject ID
     email: EmailStr
     full_name: str | None = None
 
-# Properties to receive via API on creation
+# Properties to receive via API on creation (Now likely handled by Auth0 flow, but schema might be used internally)
 class UserCreate(UserBase):
-    password: str
+    # password: str # Removed for Auth0
+    pass # Keep structure, might be used for internal creation if needed
 
-# Properties to receive via API on update (optional)
+# Properties to receive via API on update (e.g., profile update)
 class UserUpdate(BaseModel):
-    password: str | None = None
+    # password: str | None = None # Removed for Auth0
     full_name: str | None = None
-    # Add other updatable fields here if needed
-    # is_active: bool | None = None
+    # Add other updatable fields here if needed, e.g., profile settings
+    # is_active: bool | None = None # Typically admin only
     # subscription_tier: SubscriptionTier | None = None # Should admin be able to update?
 
 # Properties shared by models stored in DB
 class UserInDBBase(UserBase):
     id: int
     is_active: bool
-    full_name: str | None = None
     subscription_tier: SubscriptionTier # Add tier here
-    # Add other DB fields here
-    # full_name: str | None = None
+    current_streak: int # Added for daily streak
+    last_streak_update: datetime | None = None # Added for daily streak
 
     class Config:
         from_attributes = True # Pydantic V2 uses this instead of orm_mode
@@ -35,6 +37,7 @@ class UserInDBBase(UserBase):
 class User(UserInDBBase):
     pass # Inherits all from UserInDBBase
 
-# Properties stored in DB
+# Properties stored in DB (includes fields not usually returned to client)
 class UserInDB(UserInDBBase):
-    hashed_password: str 
+    # hashed_password: str # Removed for Auth0
+    pass # Currently no DB-only fields beyond UserInDBBase after removing password

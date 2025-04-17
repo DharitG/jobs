@@ -87,7 +87,8 @@ export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
   // --- Loading State ---
   if (isLoading) {
     return (
-      <div className="p-4 border border-grey-20 rounded-md bg-white shadow-1 mt-6 animate-pulse">
+      // Added data-testid for testing
+      <div data-testid="loading-skeleton" className="p-4 border border-grey-20 rounded-md bg-white shadow-1 mt-6 animate-pulse" aria-label="Loading visa timeline"> 
         <div className="h-6 bg-grey-20 rounded w-3/4 mb-4"></div>
         <div className="space-y-4 ml-2 border-l border-grey-20 pl-8">
            <div className="h-4 bg-grey-20 rounded w-1/2"></div>

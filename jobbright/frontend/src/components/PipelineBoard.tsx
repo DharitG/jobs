@@ -49,7 +49,8 @@ interface PipelineBoardProps {
 function PipelineColumn({ stage, applications }: { stage: ApplicationStage, applications: ApplicationItem[] }) {
   // TODO: Implement conditional drop shadow on header based on scroll position within the column's content area.
   return (
-    <div className="flex-shrink-0 w-72 bg-muted rounded-design-md shadow-sm"> {/* Use theme class: bg-muted */}
+    // Add data-testid for easier selection in tests
+    <div data-testid={`pipeline-column-${stage}`} className="flex-shrink-0 w-72 bg-muted rounded-design-md shadow-sm"> {/* Use theme class: bg-muted */}
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 p-3 bg-muted rounded-t-design-md border-b border-border shadow-sm"> {/* Use theme classes: bg-muted, border-border */}
         <h3 className="text-sm font-semibold text-foreground flex justify-between items-center"> {/* Use theme class: text-foreground */}

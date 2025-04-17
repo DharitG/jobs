@@ -51,7 +51,10 @@ export function DailyStreak({ initialStreak = 0 }: DailyStreakProps) {
       </CardHeader>
       <CardContent className="flex items-center justify-center p-6">
         {/* Use muted-foreground for inactive icon */}
-        <Flame className={`h-8 w-8 mr-2 ${streakCount > 0 ? 'text-warning' : 'text-muted-foreground'}`} /> 
+        <Flame 
+          className={`h-8 w-8 mr-2 ${streakCount > 0 ? 'text-warning' : 'text-muted-foreground'}`} 
+          data-testid="flame-icon" // Added for testing
+        /> 
         {/* Use card-foreground for count */}
         <span className="text-3xl font-bold text-card-foreground">{streakCount}</span> 
         {/* Use muted-foreground for "days" text */}

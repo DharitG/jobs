@@ -257,5 +257,24 @@ Based on `vision.md`.
 *   ⬜ Write unit tests for core backend logic (CRUD, security, services)
 *   ⬜ Write integration tests for API endpoints
 *   ✅ Setup Frontend testing framework (e.g., Vitest, Cypress) (Vitest installed and configured)
-*   ⬜ Write unit tests for frontend components/hooks
+*   🚧 Write unit tests for frontend components/hooks (Basic tests added for many UI components)
+    *   ✅ `DailyStreak.tsx` (Basic rendering)
+    *   ✅ `ProgressMeter.tsx`
+    *   ✅ `QuotaRing.tsx`
+    *   ✅ `Button.tsx`
+    *   ✅ `Badge.tsx`
+    *   ✅ `Input.tsx`
+    *   ✅ `Card.tsx` (and subcomponents)
+    *   ✅ `JobCard.tsx` (Rendering tests w/ mocks)
+    *   ✅ `VisaPulse.tsx` (Rendering tests w/ mocks, skipped timer test)
+    *   ✅ `PipelineBoard.tsx` (Rendering tests w/ mocks)
+    *   ✅ `Accordion.tsx`
+    *   ✅ `Label.tsx`
+    *   ✅ `Skeleton.tsx`
+    *   ✅ `Switch.tsx`
+    *   ✅ `Textarea.tsx`
+    *   ✅ `Tabs.tsx`
+    *   ✅ `Dialog.tsx`
+    *   ⬜ Other components (e.g., `ProfileImport`, `ResumeEditModal`, etc.)
+    *   ⬜ Hooks (e.g., `use-toast`)
 *   ⬜ Write end-to-end tests for critical user flows

@@ -3,6 +3,7 @@ uvicorn[standard]
 python-multipart
 passlib[bcrypt]
 pydantic[email]
+pydantic-settings
 sqlalchemy
 psycopg2-binary
 alembic
@@ -15,4 +16,4 @@ qdrant-client
 sentence-transformers
 numpy
 stripe
-PyPDF2 
+PyPDF2

@@ -2,10 +2,10 @@ import * as React from "react"
 
 import { cn } from "~/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({ className, type = "text", ...props }: React.ComponentProps<"input">) { // Default type to "text"
   return (
     <input
-      type={type}
+      type={type} // Pass the resolved type
       data-slot="input"
       className={cn(
         // Base styles from design system + existing structure

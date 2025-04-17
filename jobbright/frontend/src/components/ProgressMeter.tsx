@@ -33,20 +33,31 @@ export function ProgressMeter({ currentStage, className }: ProgressMeterProps) {
   // Design System: Horizontal bar, 4 segments (represented by width)
   // TODO: Visually represent the 4 distinct segments (Applied, Screening, Interview, Offer)
   // TODO: Implement animated gradient sweep on stage change as per design system
+  // This might involve adding a specific class or using a style property for the gradient animation
   return (
     <div 
-      className={cn("w-full bg-grey-20 rounded-full h-2.5 overflow-hidden shadow-inner", className)} 
+      className={cn(
+        "relative w-full bg-grey-20 rounded-full h-2.5 overflow-hidden shadow-inner", // Added relative positioning
+        className
+      )} 
       title={`Current Stage: ${currentStage}`} // Add title for accessibility
     >
+      {/* Segment dividers (visual representation) */}
+      {/* These sit behind the main progress bar */}
+      <div className="absolute top-0 bottom-0 left-1/4 w-px bg-white/50 z-0"></div>
+      <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/50 z-0"></div>
+      <div className="absolute top-0 bottom-0 left-3/4 w-px bg-white/50 z-0"></div>
+
+      {/* Main progress bar */}
       <div 
         className={cn(
-          "h-full rounded-full transition-all duration-500 ease-out",
-          currentStage === 'Rejected' ? 'bg-error' : 'bg-primary-500' // Use error color if rejected
-          // Missing gradient sweep animation class
+          "absolute top-0 left-0 h-full rounded-full transition-all duration-500 ease-out z-10", // Added absolute positioning and z-index
+          currentStage === 'Rejected' ? 'bg-error' : 'bg-primary-500', // Use error color if rejected
+          // TODO: Add class for gradient sweep animation here, e.g., 'animate-gradient-sweep'
         )}
-        style={{ width: `${percentage}%` }} 
+        style={{ width: `${percentage}%` }}
+        data-testid="progress-bar-inner" // Added for testing
       />
-      {/* Missing segment representation */}
     </div>
   );
 }
