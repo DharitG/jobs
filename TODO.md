@@ -85,7 +85,7 @@ Based on `vision.md`.
 *   ✅ Create `frontend/src/styles/global.css` (Empty)
 *   ✅ Create `frontend/Dockerfile` (Empty)
 *   ✅ Create `frontend/vite.config.ts` (Empty)
-*   ⬜ Setup base React/Next.js project (`create-t3-app` suggested)
+*   ✅ Setup base React/Next.js project (`create-t3-app` suggested)
 
 ### Infra Scaffolding (`infra/`)
 *   ✅ Create `infra/` directory
@@ -105,18 +105,19 @@ Based on `vision.md`.
 *   ✅ Implement FastAPI app setup (`main.py`)
 *   ✅ Implement Pydantic settings (`core/config.py`)
 *   ✅ Implement DB Session management (`db/session.py`)
-*   ✅ Implement Password Hashing & JWT (`core/security.py`)
-*   ✅ Define User DB Model (`models/user.py`)
-*   ✅ Define User Pydantic Schemas (`schemas/user.py`)
-*   ✅ Implement User CRUD operations (`crud/user.py`)
-*   ✅ Implement Token generation endpoint (`api/auth.py`)
-*   ✅ Integrate Auth router (`main.py`)
-*   ✅ Implement User registration endpoint (`api/auth.py`)
+*   ⬜ ~~Implement Password Hashing & JWT (`core/security.py`)~~ (Using Auth0)
+*   ⬜ Define User DB Model (`models/user.py`) - (Needs update: Remove password, add Auth0 `sub`)
+*   ⬜ Define User Pydantic Schemas (`schemas/user.py`) - (Needs update: Remove password)
+*   ⬜ Implement User CRUD operations (`crud/user.py`) - (Needs update: Adapt for Auth0 `sub`, remove password handling)
+*   ⬜ ~~Implement Token generation endpoint (`api/auth.py`)~~ (Handled by Auth0)
+*   ⬜ Implement Auth0 Backend Token Validation Middleware
+*   ⬜ ~~Integrate Auth router (`main.py`)~~ (Replaced by middleware)
+*   ⬜ ~~Implement User registration endpoint (`api/auth.py`)~~ (Handled by Auth0)
 *   ✅ Implement User profile endpoints (`api/users.py` - e.g., get current user, update)
-    *   ✅ Implement GET `/users/me` endpoint
-    *   ✅ Implement PUT `/users/me` endpoint
-*   ⬜ Implement Role-based access control (RBAC) foundation
-*   ⬜ Implement Google Sign-in (backend)
+    *   ✅ Implement GET `/users/me` endpoint (Needs Auth0 protection)
+    *   ✅ Implement PUT `/users/me` endpoint (Needs Auth0 protection)
+*   ⬜ Implement Role-based access control (RBAC) foundation (Can leverage Auth0 roles/permissions)
+*   ⬜ ~~Implement Google Sign-in (backend)~~ (Handled by Auth0)
 
 ### Profile & Resumes
 *   ✅ Define Resume DB Model (`models/resume.py`)
@@ -161,14 +162,20 @@ Based on `vision.md`.
 
 ## 3. Frontend Development (Core Features - MVP Week 1-3)
 
-*   ⬜ Setup base UI library (e.g., `shadcn/ui`)
-*   ⬜ Implement basic layout (Navbar, Footer)
-*   ⬜ Implement Sign-in/Sign-up page/modal
-*   ⬜ Implement Google Sign-in flow (frontend)
-*   ⬜ Implement Profile Import UI (connect to backend)
+*   ✅ Setup base UI library (e.g., `shadcn/ui`)
+*   ✅ Implement basic layout (Navbar, Footer)
+*   ✅ Implement Sign-in/Sign-up flow using Auth0 SDK (Replaces previous form impl.)
+*   ⬜ ~~Implement Google Sign-in flow (frontend)~~ (Handled by Auth0 SDK)
+*   ✅ Implement Profile Import UI (connect to backend) - (Basic component created, API connection pending)
 *   ⬜ Implement Application Pipeline Dashboard (`pages/dashboard.tsx`, `components/ProgressMeter.tsx`)
-*   ⬜ Implement Job listing/display (`components/JobCard.tsx`)
-*   ⬜ Connect Frontend API client to Backend endpoints
+    *   ✅ Create dashboard page structure (`app/dashboard/page.tsx`)
+    *   ✅ Create basic `ProgressMeter.tsx` component
+    *   ✅ Implement `PipelineBoard.tsx` component (Kanban)
+    *   ✅ Integrate `JobCard.tsx` into PipelineBoard
+    *   ✅ Add drag-and-drop functionality
+    *   🚧 Connect dashboard components to backend data (Frontend hook added, blocked by backend tRPC procedure `application.list`)
+*   ✅ Implement Job listing/display (`components/JobCard.tsx`)
+*   🚧 Connect Frontend API client to Backend endpoints (Dashboard connection started, blocked by backend)
 *   ⬜ Implement state management (e.g., Zustand, Redux Toolkit)
 
 ---
@@ -179,6 +186,9 @@ Based on `vision.md`.
 *   ⬜ Implement Daily Streak Gamification (UI + Backend logic)
 *   ⬜ Implement VisaPulse Backend Service (`services/visa_alerts.py`?)
 *   ⬜ Implement VisaPulse UI (`components/VisaPulse.tsx`, 7-day history limit)
+    *   ✅ Create basic `VisaPulse.tsx` component structure
+    *   ⬜ Connect component to backend data/service
+    *   ⬜ Implement 7-day history limit logic
 *   ⬜ Implement Limited GPT Resume Edits (UI + Backend Integration)
 
 ### Pro Tier ($29/mo)
