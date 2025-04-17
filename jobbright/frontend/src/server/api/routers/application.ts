@@ -36,7 +36,6 @@ const updateStatusInputSchema = z.object({
 export const applicationRouter = createTRPCRouter({
   list: protectedProcedure // Requires user to be logged in
     .query(async ({ ctx }) => {
-      // TODO: Implement logic to fetch applications from the FastAPI backend
       // Use ctx.session.user.sub which matches our placeholder Session type
       const userId = ctx.session?.user?.sub;
       console.log("Attempting to fetch applications for user:", userId); 

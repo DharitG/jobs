@@ -1,9 +1,5 @@
 'use client';
 
-'use client';
-
-'use client';
-
 import React, { useState, useCallback } from 'react';
 import { JobCard } from './JobCard'; // Import JobCard
 import { api } from '~/trpc/react'; // Import tRPC hook

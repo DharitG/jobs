@@ -6,6 +6,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { Layout } from "../components/layout";
 import { ClientProviders } from "./client-providers";
 import { Toaster } from "~/components/ui/toaster"; // Import Toaster
+import { SupportChatTrigger } from "~/components/SupportChatTrigger"; // Import SupportChatTrigger
 
 export const metadata: Metadata = {
   title: "JobBright App",
@@ -28,6 +29,7 @@ export default function RootLayout({
         <ClientProviders>
           <Layout>{children}</Layout>
           <Toaster /> {/* Render Toaster */}
+          <SupportChatTrigger /> {/* Render Support Chat Trigger */}
         </ClientProviders>
       </body>
     </html>

@@ -174,47 +174,47 @@ Based on `vision.md`.
     *   ✅ Integrate `JobCard.tsx` into PipelineBoard
     *   ✅ Add drag-and-drop functionality
     *   ✅ Add Skeleton loader for loading state
-    *   🚧 Connect dashboard components to backend data (tRPC procedure `application.list` & `updateStatus` connected, needs real data testing/refinement)
+    *   ✅ Connect dashboard components to backend data (tRPC procedure `application.list` & `updateStatus` connected)
 *   ✅ Implement Job listing/display (`components/JobCard.tsx`)
-*   🚧 Connect Frontend API client to Backend endpoints (Dashboard connection implemented via tRPC, needs testing/refinement)
-*   ⬜ Implement state management (e.g., Zustand, Redux Toolkit)
+*   ✅ Connect Frontend API client to Backend endpoints (Dashboard connection implemented via tRPC)
+*   ✅ Implement state management (e.g., Zustand, Redux Toolkit) (Zustand store created: `stores/useAppStore.ts`)
 
 ---
 
 ## 4. Differentiators & Revenue Features (Week 4-12+)
 
 ### Free Tier Enhancements
-*   ⬜ Implement Daily Streak Gamification (UI + Backend logic)
+*   🚧 Implement Daily Streak Gamification (UI + Backend logic) (UI component `DailyStreak.tsx` created and added to dashboard, blocked by backend/tRPC)
 *   ⬜ Implement VisaPulse Backend Service (`services/visa_alerts.py`?)
 *   ✅ Implement VisaPulse UI (`components/VisaPulse.tsx`, 7-day history limit)
     *   ✅ Create basic `VisaPulse.tsx` component structure
-    *   ✅ Connect component to backend data/service (via tRPC, using mock data for now)
+    *   ✅ Connect component to backend data/service (via tRPC)
     *   ✅ Implement 7-day history limit logic (Filtering implemented)
-*   ⬜ Implement Limited GPT Resume Edits (UI + Backend Integration)
+*   🚧 Implement Limited GPT Resume Edits (UI + Backend Integration) (UI component `ResumeEditModal.tsx` created, blocked by backend/tRPC; Note: TS path alias errors persisting despite seemingly correct config)
 
 ### Pro Tier ($29/mo)
 *   ⬜ Implement Unlimited Auto-apply (remove quota, ensure robust queueing)
-*   ⬜ Integrate GPT-4o for Resume & Cover Letter Rewriting (Backend Service + UI)
-*   ⬜ Implement Interview Flash-Cards (LLM Q&A Feature) (Backend Service + UI)
-*   ⬜ Implement Priority Support Chat Bot (Integration)
+*   🚧 Integrate GPT-4o for Resume & Cover Letter Rewriting (Backend Service + UI) (UI component `ResumeEditModal.tsx` created, blocked by backend/tRPC)
+*   🚧 Implement Interview Flash-Cards (LLM Q&A Feature) (Backend Service + UI) (UI component `InterviewFlashCard.tsx` created, blocked by backend/tRPC)
+*   🚧 Implement Priority Support Chat Bot (Integration) (UI component `SupportChatTrigger.tsx` created and added to layout, blocked by integration)
 *   ⬜ Develop Browser Extension for ATS Auto-fill (`Assisted Application`)
-*   🚧 Implement VisaPulse In-app Lawyer Chat (UI + Backend/Integration) (Placeholder button added to UI)
-*   ⬜ Implement Mock Interview Scheduling Feature (UI + Backend)
-*   ⬜ Implement Slack Alerts Feature (Backend Integration)
-*   ⬜ Implement Stripe integration for Pro subscriptions (`models/payment.py`, `schemas/payment.py`, `api/subs.py`)
-*   🚧 Implement Paywall / Upgrade prompts in UI (`pages/pricing.tsx`) (Basic structure, toggle, FAQ added; Stripe pending)
+*   🚧 Implement VisaPulse In-app Lawyer Chat (UI + Backend/Integration) (UI button disabled, blocked by backend/plan logic)
+*   🚧 Implement Mock Interview Scheduling Feature (UI + Backend) (UI component `MockInterviewScheduler.tsx` created, blocked by backend/tRPC)
+*   🚧 Implement Slack Alerts Feature (Backend Integration) (UI component `SlackAlertSettings.tsx` created, blocked by backend/tRPC)
+*   ⬜ Implement Stripe integration for Pro subscriptions (`models/payment.py`, `schemas/payment.py`, `api/subs.py`, tRPC `subscription` router)
+*   🚧 Implement Paywall / Upgrade prompts in UI (`pages/pricing.tsx`) (UI complete, checkout button calls placeholder, blocked by backend Stripe/tRPC)
 
 ### Elite Tier ($99/mo)
-*   ⬜ Implement Personal Success Coach Feature (UI + Backend - Human/Agent Blend)
-*   ⬜ Implement Guaranteed 24-hour Résumé Review Feature (UI + Backend workflow)
+*   🚧 Implement Personal Success Coach Feature (UI + Backend - Human/Agent Blend) (UI component `SuccessCoachSection.tsx` created, blocked by backend/tRPC)
+*   🚧 Implement Guaranteed 24-hour Résumé Review Feature (UI + Backend workflow) (UI component `ResumeReviewSubmit.tsx` created, blocked by backend/tRPC)
 *   ⬜ Implement Custom Domain Email Alias Feature (Backend Service)
 *   ⬜ Implement Auto-apply Throttling Heuristics (Backend logic in `services/autosubmit.py`)
 *   ⬜ Implement "Warm Intro Finder" (Graph Search across external data) (Backend Service)
 *   ⬜ Implement Stripe integration for Elite subscriptions
-*   ⬜ Implement Annual Billing option / Discount logic
+*   🚧 Implement Annual Billing option / Discount logic (UI toggle updated with placeholder saving %, blocked by backend/Stripe data)
 
 ### Revenue Accelerators
-*   ⬜ Implement Referral Credits system (UI + Backend logic)
+*   🚧 Implement Referral Credits system (UI + Backend logic) (UI component `ReferralSection.tsx` created, blocked by backend/tRPC)
 
 ---
 
@@ -233,10 +233,10 @@ Based on `vision.md`.
 
 ## 6. Growth & Persuasion Features
 
-*   ⬜ Implement AIDA funnel copy on landing page (Content Task)
-*   🚧 Implement Loss-aversion timer for VisaPulse free tier (UI) (Prompt added, timer/logic pending)
-*   ⬜ Implement Mini-milestones/confetti/badges (UI + Backend triggers)
-*   ⬜ Implement Affiliate rev-share tracking (Backend + UI for partners)
+*   ✅ Implement AIDA funnel copy on landing page (Content Task) (Hero section copy implemented)
+*   ✅ Implement Loss-aversion timer for VisaPulse free tier (UI) (Prompt added, timer logic implemented)
+*   🚧 Implement Mini-milestones/confetti/badges (UI + Backend triggers) (UI component `MilestoneBadge.tsx` created, blocked by backend triggers/data)
+*   🚧 Implement Affiliate rev-share tracking (Backend + UI for partners) (UI component `AffiliateDashboard.tsx` created, blocked by backend/tRPC)
 *   ⬜ Implement Risk-reversal offer logic/tracking (Backend)
 
 ---
@@ -256,6 +256,6 @@ Based on `vision.md`.
 *   ⬜ Setup Pytest framework
 *   ⬜ Write unit tests for core backend logic (CRUD, security, services)
 *   ⬜ Write integration tests for API endpoints
-*   ⬜ Setup Frontend testing framework (e.g., Vitest, Cypress)
+*   ✅ Setup Frontend testing framework (e.g., Vitest, Cypress) (Vitest installed and configured)
 *   ⬜ Write unit tests for frontend components/hooks
 *   ⬜ Write end-to-end tests for critical user flows

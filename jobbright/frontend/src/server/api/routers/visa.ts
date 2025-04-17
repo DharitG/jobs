@@ -33,23 +33,58 @@ export const visaRouter = createTRPCRouter({
       const userId = ctx.session?.user?.sub;
       console.log(`Fetching visa timeline for user: ${userId}`);
 
-      // TODO: Replace with actual fetch call to backend API endpoint
-      // e.g., GET /visa/timeline
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500)); 
-
-      // Return mock data for now
-      console.log("Returning mock visa timeline data.");
-      
-      // Validate mock data (good practice)
-      const validationResult = z.array(visaTimelineItemSchema).safeParse(MOCK_VISA_DATA);
-      if (!validationResult.success) {
-          console.error("Mock data validation failed:", validationResult.error);
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Invalid mock data." });
+      // 1. Get Access Token
+      const accessToken = ctx.session?.accessToken;
+      if (!accessToken) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Access token not found in session.' });
       }
-      
-      return validationResult.data;
+
+      // 2. Construct Backend API URL (Assuming endpoint is /visa/timeline)
+      const backendUrl = `${env.NEXT_PUBLIC_BACKEND_API_URL}/visa/timeline`; 
+      console.log("Fetching visa timeline from:", backendUrl);
+
+      try {
+        // 3. Make fetch request
+        const response = await fetch(backendUrl, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        // 4. Handle response and errors
+        if (!response.ok) {
+           const errorText = await response.text();
+           console.error(`Backend error fetching visa timeline: ${response.status} ${response.statusText}`, errorText);
+           const errorData = JSON.parse(errorText || '{}');
+           throw new TRPCError({ 
+             code: 'INTERNAL_SERVER_ERROR', 
+             message: errorData.detail || `Failed to fetch visa timeline (Status: ${response.status})` 
+           });
+        }
+        const data = await response.json();
+        console.log("Received visa timeline data from backend:", data);
+
+        // 5. Validate data using the defined schema
+        const validationResult = z.array(visaTimelineItemSchema).safeParse(data);
+
+        if (!validationResult.success) {
+           console.error("Backend visa timeline response validation failed:", validationResult.error.flatten());
+           throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Invalid visa timeline data format received from backend.' });
+        }
+        
+        // 6. Return validated data (no extra mapping needed if schema matches frontend)
+        console.log("Returning validated visa timeline data.");
+        return validationResult.data;
+
+      } catch (error) {
+        // Handle fetch errors or TRPCErrors thrown above
+        console.error("Error fetching visa timeline:", error);
+        if (error instanceof TRPCError) {
+          throw error; // Re-throw TRPC errors
+        }
+        // Throw a generic error for other fetch issues
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred while fetching the visa timeline.' });
+      }
     }),
     
   // Add other visa-related procedures later (e.g., lawyer booking)

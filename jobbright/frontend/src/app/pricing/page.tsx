@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '~/components/ui/card';
-import { Check } from 'lucide-react'; // Icon for feature lists
+import { Check, Loader2 } from 'lucide-react'; // Icon for feature lists & Loader
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs"; // For Monthly/Annual toggle - Uncommented
+import { api } from '~/trpc/react'; // Import tRPC hook
+import { useToast } from '~/hooks/use-toast'; // Import useToast
 import {
   Accordion,
   AccordionContent,
@@ -44,6 +46,7 @@ const tiers = {
       ],
       cta: 'Upgrade to Pro',
       disabled: false, // Enable based on user's current plan later
+      priceId: 'price_placeholder_pro_monthly', // Placeholder Stripe Price ID
     },
     {
       name: 'Elite',
@@ -59,10 +62,10 @@ const tiers = {
       ],
       cta: 'Upgrade to Elite',
       disabled: false, // Enable based on user's current plan later
+      priceId: 'price_placeholder_elite_monthly', // Placeholder Stripe Price ID
     },
   ],
   annual: [
-     // TODO: Add annual pricing tiers with discounts
      {
       name: 'Free',
       price: '$0',
@@ -92,6 +95,7 @@ const tiers = {
       ],
       cta: 'Upgrade to Pro (Annual)',
       disabled: false, 
+      priceId: 'price_placeholder_pro_annual', // Placeholder Stripe Price ID
     },
      {
       name: 'Elite',
@@ -107,16 +111,56 @@ const tiers = {
       ],
       cta: 'Upgrade to Elite (Annual)',
       disabled: false, 
+      priceId: 'price_placeholder_elite_annual', // Placeholder Stripe Price ID
     },
   ],
 };
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const { toast } = useToast();
+  const utils = api.useUtils(); // If needed for invalidation later
+  const [isLoadingCheckout, setIsLoadingCheckout] = useState<string | null>(null); // Track loading state per priceId
 
-  const handleUpgradeClick = (tierName: string) => {
-    console.log(`Upgrade button clicked for ${tierName} (${billingCycle})`);
-    // TODO: Implement Stripe checkout logic here or redirect
+  // --- TODO: Implement tRPC Mutation for Stripe Checkout ---
+  // const createCheckoutSession = api.subscription.createCheckoutSession.useMutation({
+  //   onSuccess: (data) => {
+  //     // Redirect user to Stripe Checkout
+  //     if (data.checkoutUrl) {
+  //       window.location.href = data.checkoutUrl;
+  //     } else {
+  //       console.error("No checkout URL received from backend.");
+  //       toast({
+  //         title: "Checkout Error",
+  //         description: "Could not initiate checkout session. Please try again.",
+  //         variant: "destructive",
+  //       });
+  //     }
+  //     setIsLoadingCheckout(null); // Reset loading state on success/redirect
+  //   },
+  //   onError: (error, variables) => {
+  //     console.error("Stripe Checkout Mutation Error:", error);
+  //     toast({
+  //       title: "Upgrade Error",
+  //       description: error.message || "Failed to start the upgrade process.",
+  //       variant: "destructive",
+  //     });
+  //     setIsLoadingCheckout(null); // Reset loading state on error
+  //   },
+  // });
+  // --- End tRPC Mutation ---
+
+  const handleUpgradeClick = (tierName: string, priceId?: string) => {
+    console.log(`Upgrade button clicked for ${tierName} (${billingCycle}) with priceId: ${priceId}`);
+    if (!priceId) {
+      console.error("Missing Price ID for tier:", tierName);
+      toast({ title: "Error", description: "Configuration error: Price ID missing.", variant: "destructive" });
+      return;
+    }
+    // TODO: Uncomment and use when the backend tRPC procedure 'subscription.createCheckoutSession' is implemented.
+    // setIsLoadingCheckout(priceId); // Set loading state for this button
+    // createCheckoutSession.mutate({ priceId: priceId }); 
+    toast({ title: "Coming Soon", description: "Stripe Checkout integration is pending.", variant: "default" });
   };
 
   const currentTiers = tiers[billingCycle];
@@ -142,8 +186,8 @@ export default function PricingPage() {
       >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
-          {/* TODO: Calculate actual saving percentage */}
-          <TabsTrigger value="annual">Annual (Save)</TabsTrigger> 
+          {/* TODO: Calculate actual saving percentage from backend/Stripe data */}
+          <TabsTrigger value="annual">Annual (Save ~16%)</TabsTrigger> {/* Example saving */}
         </TabsList>
         {/* No TabsContent needed here as the grid below updates based on state */}
       </Tabs>
@@ -175,9 +219,14 @@ export default function PricingPage() {
               <Button 
                 className="w-full" 
                 variant={tier.name === 'Pro' ? 'default' : 'outline'} 
-                disabled={tier.disabled}
-                onClick={() => !tier.disabled && handleUpgradeClick(tier.name)}
+                // Combine disabled conditions: tier default + loading state for this specific tier
+                disabled={tier.disabled || isLoadingCheckout === tier.priceId} 
+                onClick={() => !tier.disabled && handleUpgradeClick(tier.name, tier.priceId)}
               >
+                {/* Show loader only if this button's checkout is loading */}
+                {isLoadingCheckout === tier.priceId ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                ) : null}
                 {tier.cta}
               </Button>
             </CardFooter>

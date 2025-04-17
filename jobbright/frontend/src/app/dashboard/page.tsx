@@ -3,9 +3,10 @@
 import React from 'react';
 // import { ProgressMeter } from '~/components/ProgressMeter'; // No longer needed here
 import { PipelineBoard } from '~/components/PipelineBoard'; // Import the board
+import { DailyStreak } from '~/components/DailyStreak'; // Import DailyStreak
+import { VisaPulse } from '~/components/VisaPulse'; // Import VisaPulse
 import { api } from '~/trpc/react'; // Import tRPC client hook
 import { Skeleton } from '~/components/ui/skeleton'; // Import Skeleton
-// Import other dashboard components later
 
 // Define ApplicationStage type (consider moving to a shared types file)
 type ApplicationStage = 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Rejected';
@@ -85,17 +86,36 @@ export default function DashboardPage() {
     (app: ApiApplicationItem): app is ApiApplicationItem => app.stage !== 'Rejected'
   );
 
-  return (
-    // Removed container mx-auto to allow board to potentially span wider
-    <div className="px-4 py-8 h-screen flex flex-col">
-      <h1 className="text-2xl font-bold mb-6 text-grey-90 flex-shrink-0">Application Pipeline</h1>
-      
-      {/* Render the Pipeline Board */}
-      <div className="flex-grow overflow-hidden"> {/* Added container for board overflow control */}
-        <PipelineBoard initialApplications={activeApplications} />
-      </div>
+  // TODO: Fetch user's plan to determine historyLimitDays for VisaPulse
+  const userPlan = 'free'; // Placeholder
+  const visaPulseHistoryLimit = userPlan === 'free' ? 7 : undefined; // Show full history for paid plans
 
-      {/* Other dashboard sections like Insights, VisaPulse can go here */}
+  return (
+    // Use grid layout for main content and sidebar
+    <div className="px-4 py-8 h-screen flex flex-col">
+      <h1 className="text-3xl font-bold mb-6 text-grey-90 flex-shrink-0 font-display">Dashboard</h1>
+      
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+        {/* Main Content Area (Pipeline Board) */}
+        <div className="lg:col-span-2 flex flex-col overflow-hidden">
+          <h2 className="text-xl font-semibold mb-4 text-grey-90 flex-shrink-0">Application Pipeline</h2>
+          <div className="flex-grow overflow-hidden"> {/* Container for board overflow control */}
+            <PipelineBoard initialApplications={activeApplications} />
+          </div>
+        </div>
+
+        {/* Sidebar Area */}
+        <aside className="lg:col-span-1 flex flex-col space-y-6 overflow-y-auto scrollbar-thin">
+           <h2 className="text-xl font-semibold text-grey-90 flex-shrink-0">Insights</h2>
+           {/* Daily Streak Component */}
+           <DailyStreak initialStreak={5} /> {/* Placeholder initial streak */}
+           
+           {/* VisaPulse Component */}
+           <VisaPulse historyLimitDays={visaPulseHistoryLimit} />
+
+           {/* Add other sidebar components here later (e.g., QuotaRing) */}
+        </aside>
+      </div>
     </div>
   );
 }

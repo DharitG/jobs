@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Import useState and useEffect
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { api } from '~/trpc/react';
@@ -48,9 +48,41 @@ const getStatusColor = (status: VisaStatus): string => {
   }
 };
 
+const TWENTY_FOUR_HOURS_IN_SECONDS = 24 * 60 * 60;
+
 export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
+  // State for the countdown timer (e.g., 24 hours)
+  const [timeLeft, setTimeLeft] = useState(TWENTY_FOUR_HOURS_IN_SECONDS); 
 
   const { data: items, isLoading, error } = api.visa.listTimeline.useQuery();
+
+  // Effect to handle the countdown timer
+  useEffect(() => {
+    // Only run timer if there's a history limit (i.e., free tier)
+    if (!historyLimitDays || historyLimitDays <= 0) {
+      return; 
+    }
+
+    // Don't start timer if time is already up
+    if (timeLeft <= 0) return;
+
+    // Set up the interval
+    const intervalId = setInterval(() => {
+      setTimeLeft((prevTime) => prevTime - 1);
+    }, 1000);
+
+    // Clear interval on component unmount or when time runs out
+    return () => clearInterval(intervalId);
+  }, [timeLeft, historyLimitDays]); // Rerun effect if timeLeft or historyLimitDays changes
+
+  // Helper function to format time (HH:MM:SS)
+  const formatTime = (totalSeconds: number): string => {
+    if (totalSeconds <= 0) return "00:00:00";
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // --- Loading State ---
   if (isLoading) {
@@ -126,14 +158,18 @@ export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
                   {item.description}
                 </p>
               )}
-              {/* Placeholder for Pro Tier Lawyer Chat Button */}
-              {/* TODO: Conditionally render this based on user's plan */}
+              {/* TODO: Implement Lawyer Chat Feature */}
+              {/* - Requires backend integration (e.g., chat service API, booking endpoint) */}
+              {/* - Requires checking if user is on Pro/Elite tier */}
+              {/* - Conditionally render/enable based on user plan */}
               <div className="mt-2">
                  <Button 
                     variant="outline" 
                     size="sm" 
                     className="text-xs h-7 px-2" // Adjusted height slightly
                     onClick={() => console.log('Lawyer chat clicked for item:', item.id)} // Placeholder action
+                    disabled // Disable until feature is implemented
+                    title="Coming soon for Pro/Elite members" // Add tooltip
                  >
                     Chat with Lawyer
                  </Button>
@@ -159,12 +195,16 @@ export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
             <p className="text-sm font-medium text-primary-600">
                You're viewing the last {historyLimitDays} days of updates.
             </p>
-            <p className="text-xs text-primary-500/90 mt-1">
-               Upgrade to Pro to unlock the full history and lawyer chat access.
-            </p>
-            {/* TODO: Add actual upgrade button/link */}
-            {/* <Button size="sm" className="mt-2">Upgrade Now</Button> */}
-         </div>
+             <p className="text-xs text-primary-500/90 mt-1">
+                Upgrade to Pro to unlock the full history and lawyer chat access.
+             </p>
+             {/* Display the countdown timer */}
+             <p className="text-sm font-semibold text-warning mt-2">
+               Full history access expires in: {formatTime(timeLeft)}
+             </p>
+             {/* TODO: Add actual upgrade button/link */}
+             {/* <Button size="sm" className="mt-2">Upgrade Now</Button> */}
+          </div>
       )}
     </div>
   );
