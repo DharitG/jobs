@@ -1,9 +1,10 @@
 "use client"; // Needed for useAuth0 hook
 
 import Link from "next/link";
-import { useAuth0 } from "@auth0/auth0-react"; // Import useAuth0
-import { Button } from "~/components/ui/button"; // Use ~ alias
-import { QuotaRing } from "~/components/QuotaRing"; // Import QuotaRing
+import { useAuth0 } from "@auth0/auth0-react";
+import { Button } from "~/components/ui/button";
+import { QuotaRing } from "~/components/QuotaRing";
+import { Sparkles } from "lucide-react"; // Import Sparkles icon
 
 export function Navbar() {
   const { isAuthenticated, loginWithRedirect, logout, isLoading, user } = useAuth0();
@@ -14,18 +15,28 @@ export function Navbar() {
   const handleLogOut = () => logout({ logoutParams: { returnTo: window.location.origin } });
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 w-full border-b border-grey-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"> {/* Use grey-20 for border */}
       <div className="container flex h-14 max-w-screen-2xl items-center">
-        <Link href="/" className="mr-6 flex items-center space-x-2">
-          {/* TODO: Add Logo */}
-          <span className="font-bold inline-block">JobBright</span>
+        <Link href="/" className="mr-auto flex items-center space-x-2"> {/* Use mr-auto to push nav items right */}
+          {/* Logo based on design system */}
+          <Sparkles className="h-6 w-6 text-primary-500 transform -rotate-15" /> {/* Spark icon */}
+          <span className="font-bold font-display text-lg">JobBright</span> {/* Wordmark */}
         </Link>
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          {/* TODO: Add Navigation Links (Dashboard, Pricing) - Conditionally show Dashboard? */}
-          {/* TODO: Add Navigation Links (Dashboard, Pricing) */}
+        <div className="flex items-center space-x-4"> {/* Removed flex-1 and justify-end */}
+          {/* Navigation Links */}
+          <Link href="/pricing" className="text-sm font-medium text-grey-90 hover:text-primary-500 transition-colors">
+            Pricing
+          </Link>
+          {isAuthenticated && (
+             <Link href="/dashboard" className="text-sm font-medium text-grey-90 hover:text-primary-500 transition-colors">
+               Dashboard
+             </Link>
+          )}
+
+          {/* Auth Buttons and Quota Ring */}
           {isLoading ? (
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 rounded-full bg-muted animate-pulse"></div> {/* Placeholder for QuotaRing */}
+              <div className="w-10 h-10 rounded-full bg-grey-20 animate-pulse"></div> {/* Placeholder for QuotaRing */}
               <Button variant="ghost" disabled>Loading...</Button>
             </div>
           ) : isAuthenticated ? (

@@ -1,61 +1,34 @@
-import Link from "next/link";
-
-import { LatestPost } from "~/app/_components/post";
-import { api, HydrateClient } from "~/trpc/server";
 import { AuthButtons } from "~/components/AuthButtons";
-import { ProfileImport } from "~/components/ProfileImport";
+import { HydrateClient } from "~/trpc/server"; // Keep HydrateClient if needed for other server components potentially used here later
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
-
-  void api.post.getLatest.prefetch();
+export default function Home() {
+  // Removed the hello tRPC query and prefetch
 
   return (
-    <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="absolute top-4 right-4">
+    <HydrateClient> {/* Keep HydrateClient wrapper */}
+      <main className="flex min-h-screen flex-col items-center bg-grey-5 text-grey-90">
+        {/* Navbar would typically go in layout.tsx, but AuthButtons are here for now */}
+        <div className="absolute top-4 right-4 z-10">
           <AuthButtons />
         </div>
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
+
+        <div className="container flex flex-col items-center justify-center gap-8 px-4 py-16 text-center">
+          <h1 className="font-display text-4xl font-bold tracking-tight sm:text-6xl">
+            Stop applying. <span className="text-primary-500">Start interviewing.</span>
           </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
-          </div>
+          <p className="max-w-2xl text-lg text-grey-40 sm:text-xl">
+            50 fully-tailored applications in the next hour—while you grab coffee.
+          </p>
+          {/* Placeholder for a primary call-to-action button */}
+          {/* <Button size="lg">Get Started</Button> */}
 
-          <LatestPost />
-
-          <div className="w-full max-w-lg mt-12">
-            <ProfileImport />
-          </div>
+          {/* Removed T3 links, LatestPost, and ProfileImport */}
         </div>
+
+        {/* Placeholder for other landing page sections */}
+        {/* <section className="w-full py-12"> ... </section> */}
+
+        {/* Footer would typically go in layout.tsx */}
       </main>
     </HydrateClient>
   );

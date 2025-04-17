@@ -59,7 +59,7 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
       style={style} 
       {...attributes} 
       {...listeners} 
-      className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 p-4 border border-grey-20 rounded-md bg-white shadow-1 transition-all duration-150 ease-out hover:shadow-md hover:border-primary-500/20 hover:-translate-y-px touch-none" // Added touch-none for better mobile dnd
+      className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 p-4 border border-grey-20 rounded-design-md bg-white shadow-1 transition-all duration-150 ease-out hover:shadow-md hover:border-primary-500/20 hover:-translate-y-px touch-none" // Use rounded-design-md, Added touch-none
     >
       {/* Column 1: Logo */}
       <div className="flex-shrink-0">
@@ -72,10 +72,10 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
           onError={(e) => (e.currentTarget.src = defaultLogo)} // Fallback
         />
       </div>
-
+ 
       {/* Column 2: Job Meta */}
       <div className="overflow-hidden">
-        <p className="font-semibold text-grey-90 truncate" title={companyName}>{companyName}</p>
+        <p className="font-bold text-grey-90 truncate" title={companyName}>{companyName}</p> {/* Changed to font-bold */}
         <p className="text-grey-90 truncate" title={jobTitle}>{jobTitle}</p>
         {location && <p className="text-sm text-grey-40 truncate" title={location}>{location}</p>}
       </div>

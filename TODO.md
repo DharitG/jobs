@@ -167,9 +167,9 @@ Based on `vision.md`.
 *   ✅ Implement Sign-in/Sign-up flow using Auth0 SDK (Replaces previous form impl.)
 *   ⬜ ~~Implement Google Sign-in flow (frontend)~~ (Handled by Auth0 SDK)
 *   ✅ Implement Profile Import UI (connect to backend)
-*   ⬜ Implement Application Pipeline Dashboard (`pages/dashboard.tsx`, `components/ProgressMeter.tsx`)
+*   🚧 Implement Application Pipeline Dashboard (`pages/dashboard.tsx`, `components/ProgressMeter.tsx`)
     *   ✅ Create dashboard page structure (`app/dashboard/page.tsx`)
-    *   ✅ Create basic `ProgressMeter.tsx` component
+    *   ✅ Create basic `ProgressMeter.tsx` component (Refactored to single bar)
     *   ✅ Implement `PipelineBoard.tsx` component (Kanban)
     *   ✅ Integrate `JobCard.tsx` into PipelineBoard
     *   ✅ Add drag-and-drop functionality

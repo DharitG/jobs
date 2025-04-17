@@ -52,9 +52,9 @@ interface PipelineBoardProps {
 // Helper component for each column (makes managing sortable context easier)
 function PipelineColumn({ stage, applications }: { stage: ApplicationStage, applications: ApplicationItem[] }) {
   return (
-    <div className="flex-shrink-0 w-72 bg-grey-05 rounded-md shadow-sm">
+    <div className="flex-shrink-0 w-72 bg-grey-05 rounded-design-md shadow-sm"> {/* Use design radius */}
       {/* Sticky Header */}
-      <div className="sticky top-0 z-10 p-3 bg-grey-05 rounded-t-md border-b border-grey-20 shadow-sm">
+      <div className="sticky top-0 z-10 p-3 bg-grey-05 rounded-t-design-md border-b border-grey-20 shadow-sm"> {/* Use design radius */}
         <h3 className="text-sm font-semibold text-grey-90 flex justify-between items-center">
           <span>{stage}</span>
           <span className="text-xs font-normal bg-grey-20 text-grey-90 rounded-full px-2 py-0.5">

@@ -1,10 +1,17 @@
 'use client';
 
 import React from 'react';
-import { Badge } from './ui/badge'; // Use Badge for status dots
-import { Button } from './ui/button'; // Import Button component
-import { api } from '~/trpc/react'; // Import tRPC hook
-import { differenceInDays, parseISO, format } from 'date-fns'; // Import date-fns helpers
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { api } from '~/trpc/react';
+import { differenceInDays, parseISO, format } from 'date-fns';
+// Import Accordion components
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "~/components/ui/accordion"; 
 
 // Define potential visa status types (expand as needed)
 type VisaStatus = 'Info' | 'Action Required' | 'Upcoming Deadline' | 'Submitted' | 'Approved' | 'Unknown';
@@ -69,33 +76,49 @@ export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
     );
   }
 
-  // --- Success State (Filter and Display) ---
+  // --- Success State (Filter, Group, and Display) ---
   const now = new Date();
   const filteredItems = (items || [])
-    .map(item => ({ ...item, parsedDate: parseISO(item.date) })) // Parse dates first
+    .map(item => ({ ...item, parsedDate: parseISO(item.date) }))
     .filter(item => differenceInDays(now, item.parsedDate) <= historyLimitDays)
-    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime()); // Sort descending (most recent first)
+    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
 
-  // Design System: Vertical timeline dots coloured by status.
+  // Group items by date string (e.g., "Apr 17, 2025")
+  const groupedItems = filteredItems.reduce((acc, item) => {
+    const dateKey = format(item.parsedDate, 'MMM d, yyyy');
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(item);
+    return acc;
+  }, {} as Record<string, typeof filteredItems>); // Type assertion for accumulator
+
+  const dateKeys = Object.keys(groupedItems); // Get sorted dates
+
+  // Design System: Vertical timeline dots coloured by status. Collapsible daily items.
   return (
-    <div className="p-4 border border-grey-20 rounded-md bg-white shadow-1 mt-6">
+    <div className="p-4 border border-grey-20 rounded-design-md bg-white shadow-1 mt-6"> {/* Use design radius */}
       <h3 className="text-lg font-semibold mb-4 text-grey-90">VisaPulse Timeline (Last {historyLimitDays} Days)</h3>
-      {filteredItems.length > 0 ? ( // Use filteredItems
-        <ol className="relative border-l border-grey-20 dark:border-gray-700 ml-2">
-          {/* Add types for item and index */}
-          {filteredItems.map((item: typeof filteredItems[number], index: number) => ( 
-            <li key={item.id} className={`mb-6 ml-6 ${index === filteredItems.length - 1 ? 'mb-0' : ''}`}> 
-              <span 
-                className={`absolute flex items-center justify-center w-3 h-3 ${getStatusColor(item.status)} rounded-full -left-1.5 top-1 ring-4 ring-white dark:ring-gray-900 dark:bg-blue-900`}
-                title={item.status}
-              ></span>
-              <time className="mb-1 text-xs font-normal leading-none text-grey-40 dark:text-gray-500">
-                {/* Format date using date-fns */}
-                {format(item.parsedDate, 'MMM d, yyyy')} 
-              </time>
-              <h4 className="flex items-center mb-0.5 text-md font-semibold text-grey-90 dark:text-white">
-                {item.title}
-                {/* Optional: Add status badge next to title */}
+      {dateKeys.length > 0 ? (
+        <Accordion type="single" collapsible className="w-full" defaultValue={dateKeys[0]}> {/* Default open first day */}
+          {dateKeys.map((dateKey) => (
+            <AccordionItem value={dateKey} key={dateKey} className="border-b border-grey-20 last:border-b-0">
+              <AccordionTrigger className="text-md font-semibold text-grey-90 hover:no-underline py-3">
+                {dateKey}
+              </AccordionTrigger>
+              <AccordionContent className="pt-1 pb-3">
+                {/* Render the timeline list for this specific day */}
+                <ol className="relative border-l border-grey-20 ml-2">
+                  {groupedItems[dateKey]?.map((item, index, arr) => ( // Added optional chaining ?.map
+                    <li key={item.id} className={`mb-4 ml-6 ${index === arr.length - 1 ? 'mb-0' : ''}`}> {/* Adjusted margin */}
+                      <span 
+                        className={`absolute flex items-center justify-center w-3 h-3 ${getStatusColor(item.status)} rounded-full -left-1.5 top-1 ring-4 ring-white`}
+                        title={item.status}
+                      ></span>
+                      {/* Removed redundant date time, it's in the AccordionTrigger */}
+                      <h4 className="flex items-center mb-0.5 text-md font-semibold text-grey-90">
+                        {item.title}
+                        {/* Optional: Add status badge next to title */}
                 {/* <Badge variant="outline" className="ml-2 text-xs">{item.status}</Badge> */}
               </h4>
               {item.description && (
@@ -108,16 +131,20 @@ export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
               <div className="mt-2">
                  <Button 
                     variant="outline" 
-                    size="sm" // Changed from "xs" to "sm"
-                    className="text-xs h-6 px-2" // Keep custom classes for smaller appearance
+                    size="sm" 
+                    className="text-xs h-7 px-2" // Adjusted height slightly
                     onClick={() => console.log('Lawyer chat clicked for item:', item.id)} // Placeholder action
                  >
                     Chat with Lawyer
                  </Button>
               </div>
             </li>
+                  ))}
+                </ol>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </ol>
+        </Accordion>
       ) : (
         <p className="text-sm text-grey-40">No recent visa updates found.</p>
       )}

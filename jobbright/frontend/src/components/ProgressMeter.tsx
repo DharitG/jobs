@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { cn } from '~/lib/utils'; // Import cn utility
 
 // Define possible stages for type safety
 type ApplicationStage = 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Rejected';
@@ -8,67 +9,43 @@ type ApplicationStage = 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Rejec
 // Define props for the component
 interface ProgressMeterProps {
   currentStage: ApplicationStage;
-  // Add other relevant props like job title, company, etc. if needed later
+  className?: string; // Allow passing additional classes
 }
 
 const stages: ApplicationStage[] = ['Applied', 'Screening', 'Interview', 'Offer'];
 
-export function ProgressMeter({ currentStage }: ProgressMeterProps) {
-  const currentStageIndex = stages.indexOf(currentStage);
+// Helper function to get progress percentage
+const getProgressPercentage = (stage: ApplicationStage): number => {
+  if (stage === 'Rejected') {
+    return 0; // Or handle differently if needed
+  }
+  const stageIndex = stages.indexOf(stage);
+  if (stageIndex === -1) {
+    return 0; // Default to 0 if stage not found (e.g., initial state)
+  }
+  // Calculate percentage based on completing the stage (e.g., 'Applied' means 25% done)
+  return ((stageIndex + 1) / stages.length) * 100;
+};
 
-  // Basic visual representation based on design_system.md
-  // Horizontal bar, 4 segments
+export function ProgressMeter({ currentStage, className }: ProgressMeterProps) {
+  const percentage = getProgressPercentage(currentStage);
+
+  // Design System: Horizontal bar, 4 segments (represented by width)
   return (
-    <div className="w-full bg-grey-20 rounded-full h-2.5 dark:bg-gray-700 my-4 shadow-inner">
-      <div className="flex h-full rounded-full">
-        {stages.map((stage, index) => {
-          const isCompleted = index < currentStageIndex;
-          const isCurrent = index === currentStageIndex;
-          let bgColor = 'bg-grey-20'; // Default (inactive)
-          let segmentWidth = 'w-1/4'; // Assuming 4 equal segments
-
-          if (isCompleted) {
-            bgColor = 'bg-primary-500'; // Completed stage
-          } else if (isCurrent) {
-            // Could add animation or different style for the current active stage
-            // For now, same as completed
-            bgColor = 'bg-primary-500'; 
-            // Example: Animated gradient sweep (complex, add later if needed)
-            // bgColor = 'bg-gradient-to-r from-primary-500 to-primary-600 animate-pulse'; 
-          }
-          
-          // Add specific styling for rejected state if needed
-          if (currentStage === 'Rejected' && index === 0) {
-              bgColor = 'bg-error'; // Show error color if rejected
-              // Potentially adjust width or add icon?
-          }
-
-          // Add rounding to first and last segments
-          let borderRadius = '';
-          if (index === 0) borderRadius = 'rounded-l-full';
-          if (index === stages.length - 1) borderRadius = 'rounded-r-full';
-          // Need to handle case where only one segment is filled (e.g., currentStageIndex = 0)
-          if (currentStageIndex === 0 && index === 0) borderRadius = 'rounded-full';
-          if (currentStageIndex > 0 && index === currentStageIndex) borderRadius = 'rounded-r-full';
-          if (isCompleted && index === currentStageIndex -1 ) borderRadius = 'rounded-l-full';
-          if (isCompleted && index < currentStageIndex -1) borderRadius = '';
-
-          return (
-            <div 
-              key={stage}
-              className={`${segmentWidth} ${bgColor} ${borderRadius} h-full transition-colors duration-500 ease-in-out flex items-center justify-center relative`} 
-              title={stage}
-            >
-              {/* Optional: Add tiny dot or icon inside? */}
-              {/* Keep it clean for now */}
-            </div>
-          );
-        })}
-      </div>
-      {/* Optional: Add text labels below the bar */}
-      {/* <div className="flex justify-between text-xs text-grey-40 mt-1">
-        {stages.map(stage => <span key={stage}>{stage}</span>)}
-      </div> */}
+    <div 
+      className={cn("w-full bg-grey-20 rounded-full h-2.5 overflow-hidden shadow-inner", className)} 
+      title={`Current Stage: ${currentStage}`} // Add title for accessibility
+    >
+      <div 
+        className={cn(
+          "h-full rounded-full transition-all duration-500 ease-out",
+          currentStage === 'Rejected' ? 'bg-error' : 'bg-primary-500' // Use error color if rejected
+          // Add gradient sweep animation class here later if implemented
+        )}
+        style={{ width: `${percentage}%` }} 
+      />
+      {/* Removed segment mapping logic */}
+      {/* Removed optional text labels */}
     </div>
   );
-} 
+}
