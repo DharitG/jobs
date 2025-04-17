@@ -166,16 +166,16 @@ Based on `vision.md`.
 *   ✅ Implement basic layout (Navbar, Footer)
 *   ✅ Implement Sign-in/Sign-up flow using Auth0 SDK (Replaces previous form impl.)
 *   ⬜ ~~Implement Google Sign-in flow (frontend)~~ (Handled by Auth0 SDK)
-*   ✅ Implement Profile Import UI (connect to backend) - (Basic component created, API connection pending)
+*   ✅ Implement Profile Import UI (connect to backend)
 *   ⬜ Implement Application Pipeline Dashboard (`pages/dashboard.tsx`, `components/ProgressMeter.tsx`)
     *   ✅ Create dashboard page structure (`app/dashboard/page.tsx`)
     *   ✅ Create basic `ProgressMeter.tsx` component
     *   ✅ Implement `PipelineBoard.tsx` component (Kanban)
     *   ✅ Integrate `JobCard.tsx` into PipelineBoard
     *   ✅ Add drag-and-drop functionality
-    *   🚧 Connect dashboard components to backend data (Frontend hook added, blocked by backend tRPC procedure `application.list`)
+    *   ⬜ Connect dashboard components to backend data (tRPC procedure `application.list` created, needs testing/refinement)
 *   ✅ Implement Job listing/display (`components/JobCard.tsx`)
-*   🚧 Connect Frontend API client to Backend endpoints (Dashboard connection started, blocked by backend)
+*   ⬜ Connect Frontend API client to Backend endpoints (Dashboard connection implemented via tRPC, needs testing/refinement)
 *   ⬜ Implement state management (e.g., Zustand, Redux Toolkit)
 
 ---
@@ -185,10 +185,10 @@ Based on `vision.md`.
 ### Free Tier Enhancements
 *   ⬜ Implement Daily Streak Gamification (UI + Backend logic)
 *   ⬜ Implement VisaPulse Backend Service (`services/visa_alerts.py`?)
-*   ⬜ Implement VisaPulse UI (`components/VisaPulse.tsx`, 7-day history limit)
+*   ✅ Implement VisaPulse UI (`components/VisaPulse.tsx`, 7-day history limit)
     *   ✅ Create basic `VisaPulse.tsx` component structure
-    *   ⬜ Connect component to backend data/service
-    *   ⬜ Implement 7-day history limit logic
+    *   ✅ Connect component to backend data/service (via tRPC, using mock data for now)
+    *   ✅ Implement 7-day history limit logic (Filtering implemented)
 *   ⬜ Implement Limited GPT Resume Edits (UI + Backend Integration)
 
 ### Pro Tier ($29/mo)
@@ -257,4 +257,4 @@ Based on `vision.md`.
 *   ⬜ Write integration tests for API endpoints
 *   ⬜ Setup Frontend testing framework (e.g., Vitest, Cypress)
 *   ⬜ Write unit tests for frontend components/hooks
-*   ⬜ Write end-to-end tests for critical user flows 
+*   ⬜ Write end-to-end tests for critical user flows

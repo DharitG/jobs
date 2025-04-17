@@ -10,8 +10,10 @@ import { createTRPCContext } from "~/server/api/trpc";
  * handling a HTTP request (e.g. when you make requests from Client Components).
  */
 const createContext = async (req: NextRequest) => {
+  // Pass the full request object along with headers
   return createTRPCContext({
     headers: req.headers,
+    req: req, 
   });
 };
 

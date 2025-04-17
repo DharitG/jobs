@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Badge } from './ui/badge'; // Use Badge for status dots
+import { api } from '~/trpc/react'; // Import tRPC hook
+import { differenceInDays, parseISO, format } from 'date-fns'; // Import date-fns helpers
 
 // Define potential visa status types (expand as needed)
 type VisaStatus = 'Info' | 'Action Required' | 'Upcoming Deadline' | 'Submitted' | 'Approved' | 'Unknown';
@@ -16,9 +18,8 @@ interface VisaTimelineItem {
   // Add link or action if needed
 }
 
-// Define props for the VisaPulse component
+// Define props for the VisaPulse component (historyLimitDays is now the only prop)
 interface VisaPulseProps {
-  items: VisaTimelineItem[];
   historyLimitDays?: number; // e.g., 7 for free tier
 }
 
@@ -39,26 +40,57 @@ const getStatusColor = (status: VisaStatus): string => {
   }
 };
 
-export function VisaPulse({ items, historyLimitDays = 7 }: VisaPulseProps) {
+export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
 
-  // TODO: Filter items based on historyLimitDays if implemented
-  const displayedItems = items; // Placeholder
+  const { data: items, isLoading, error } = api.visa.listTimeline.useQuery();
+
+  // --- Loading State ---
+  if (isLoading) {
+    return (
+      <div className="p-4 border border-grey-20 rounded-md bg-white shadow-1 mt-6 animate-pulse">
+        <div className="h-6 bg-grey-20 rounded w-3/4 mb-4"></div>
+        <div className="space-y-4 ml-2 border-l border-grey-20 pl-8">
+           <div className="h-4 bg-grey-20 rounded w-1/2"></div>
+           <div className="h-4 bg-grey-20 rounded w-3/4"></div>
+           <div className="h-4 bg-grey-20 rounded w-1/2"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Error State ---
+  if (error) {
+     return (
+      <div className="p-4 border border-error/50 rounded-md bg-error/10 shadow-1 mt-6 text-error">
+        <h3 className="text-lg font-semibold mb-2">VisaPulse Error</h3>
+        <p className="text-sm">Could not load timeline: {error.message}</p>
+      </div>
+    );
+  }
+
+  // --- Success State (Filter and Display) ---
+  const now = new Date();
+  const filteredItems = (items || [])
+    .map(item => ({ ...item, parsedDate: parseISO(item.date) })) // Parse dates first
+    .filter(item => differenceInDays(now, item.parsedDate) <= historyLimitDays)
+    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime()); // Sort descending (most recent first)
 
   // Design System: Vertical timeline dots coloured by status.
   return (
     <div className="p-4 border border-grey-20 rounded-md bg-white shadow-1 mt-6">
       <h3 className="text-lg font-semibold mb-4 text-grey-90">VisaPulse Timeline (Last {historyLimitDays} Days)</h3>
-      {displayedItems.length > 0 ? (
+      {filteredItems.length > 0 ? ( // Use filteredItems
         <ol className="relative border-l border-grey-20 dark:border-gray-700 ml-2">
-          {displayedItems.map((item, index) => (
-            <li key={item.id} className={`mb-6 ml-6 ${index === displayedItems.length - 1 ? 'mb-0' : ''}`}>
+          {/* Add types for item and index */}
+          {filteredItems.map((item: typeof filteredItems[number], index: number) => ( 
+            <li key={item.id} className={`mb-6 ml-6 ${index === filteredItems.length - 1 ? 'mb-0' : ''}`}> 
               <span 
                 className={`absolute flex items-center justify-center w-3 h-3 ${getStatusColor(item.status)} rounded-full -left-1.5 top-1 ring-4 ring-white dark:ring-gray-900 dark:bg-blue-900`}
                 title={item.status}
               ></span>
               <time className="mb-1 text-xs font-normal leading-none text-grey-40 dark:text-gray-500">
-                {/* Format date nicely later */}
-                {item.date}
+                {/* Format date using date-fns */}
+                {format(item.parsedDate, 'MMM d, yyyy')} 
               </time>
               <h4 className="flex items-center mb-0.5 text-md font-semibold text-grey-90 dark:text-white">
                 {item.title}
@@ -79,4 +111,4 @@ export function VisaPulse({ items, historyLimitDays = 7 }: VisaPulseProps) {
       )}
     </div>
   );
-} 
+}

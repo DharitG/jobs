@@ -4,7 +4,7 @@ Below is a ground‑up design system (“JobBright UI 2.0”) you can drop str
 
 
 Token	Value	Rationale
-Primary 500	#3E6DFF	Eye‑catching cobalt = “action” without fintech‑blue fatigue
+Primary 500	#3E6DFF	Eye‑catching cobalt = “action” without fintech‑blue fatigueåç
 Primary 600	#345BDB	Hover/active
 Accent / Success	#18B26E	“Got an interview” flash moments
 Warning	#F8A315	Visa deadlines, quota alerts

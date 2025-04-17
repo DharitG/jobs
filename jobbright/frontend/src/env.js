@@ -17,6 +17,11 @@ export const env = createEnv({
    */
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_BACKEND_API_URL: z.string().url(),
+    NEXT_PUBLIC_AUTH0_DOMAIN: z.string().min(1),
+    NEXT_PUBLIC_AUTH0_AUDIENCE: z.string().min(1),
+    // We might also need the Client ID later for client-side Auth0Provider
+    NEXT_PUBLIC_AUTH0_CLIENT_ID: z.string().min(1), 
   },
 
   /**
@@ -26,6 +31,10 @@ export const env = createEnv({
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    NEXT_PUBLIC_BACKEND_API_URL: process.env.NEXT_PUBLIC_BACKEND_API_URL,
+    NEXT_PUBLIC_AUTH0_DOMAIN: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
+    NEXT_PUBLIC_AUTH0_AUDIENCE: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE,
+    NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

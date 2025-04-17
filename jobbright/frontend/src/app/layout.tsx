@@ -5,6 +5,7 @@ import { Geist } from "next/font/google";
 import { TRPCReactProvider } from "~/trpc/react";
 import { Layout } from "../components/layout";
 import { ClientProviders } from "./client-providers";
+import { Toaster } from "~/components/ui/toaster"; // Import Toaster
 
 export const metadata: Metadata = {
   title: "JobBright App",
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body>
         <ClientProviders>
           <Layout>{children}</Layout>
+          <Toaster /> {/* Render Toaster */}
         </ClientProviders>
       </body>
     </html>

@@ -1,7 +1,13 @@
 'use client';
 
+'use client';
+
+'use client';
+
 import React, { useState, useCallback } from 'react';
 import { JobCard } from './JobCard'; // Import JobCard
+import { api } from '~/trpc/react'; // Import tRPC hook
+import { useToast } from '~/hooks/use-toast'; // Import useToast hook
 import {
   DndContext,
   closestCenter, // Or closestCorners, rectIntersection
@@ -90,6 +96,52 @@ function PipelineColumn({ stage, applications }: { stage: ApplicationStage, appl
 export function PipelineBoard({ initialApplications }: PipelineBoardProps) {
   const [applications, setApplications] = useState<ApplicationItem[]>(initialApplications);
   const [activeId, setActiveId] = useState<string | number | null>(null); // Track the currently dragged item
+  const utils = api.useUtils(); // Get tRPC utils for cache invalidation
+  const { toast } = useToast(); // Get toast function
+
+  // --- tRPC Mutation ---
+  const updateStatusMutation = api.application.updateStatus.useMutation({
+    // Add 'variables' as the second argument to onSuccess
+    onSuccess: (updatedAppData, variables) => { 
+      // Optional: Update the specific item in the cache for faster UI update
+      // utils.application.list.setData(undefined, (oldData) => ... ); 
+      // Or simply invalidate the list query to refetch
+      utils.application.list.invalidate();
+      console.log('Application status updated successfully via mutation:', updatedAppData);
+      toast({
+        title: "Status Updated",
+        description: `Moved job to ${variables.newStatus}.`, // Use variables from mutation input
+        variant: "default", // Or a custom success variant if defined
+      });
+    },
+    onError: (error, variables) => {
+      console.error('Failed to update application status:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Could not update application status.",
+        variant: "destructive",
+      });
+      // --- Revert Optimistic Update ---
+      // Find the original stage of the item before the optimistic update
+      const originalItem = initialApplications.find(app => app.id === variables.applicationId);
+      if (originalItem) {
+        setApplications(prev => {
+           const index = prev.findIndex(app => app.id === variables.applicationId);
+           if (index !== -1) {
+             const revertedApps = [...prev];
+             // Ensure ID is preserved when reverting
+             revertedApps[index] = { ...revertedApps[index]!, stage: originalItem.stage }; 
+             // We might need to re-sort or re-position based on original order if needed
+             return revertedApps; 
+           }
+           return prev;
+        });
+      } else {
+         // Fallback: Invalidate cache to refetch correct state if original not found
+         utils.application.list.invalidate();
+      }
+    },
+  });
 
   // Group applications by stage for rendering columns
   const groupedApplications = pipelineStages.reduce((acc, stage) => {
@@ -136,7 +188,9 @@ export function PipelineBoard({ initialApplications }: PipelineBoardProps) {
       return;
     }
 
-    // Optimistic update for visual feedback
+    // --- Optimistic Update ---
+    // Note: This happens BEFORE the mutation call in handleDragEnd
+    // We will revert this in the mutation's onError handler if needed.
     setApplications((prev) => {
       const activeIndex = prev.findIndex((app) => app.id === activeId);
       if (activeIndex === -1) return prev;
@@ -210,8 +264,28 @@ export function PipelineBoard({ initialApplications }: PipelineBoardProps) {
           ...newItems.slice(insertAtIndex),
         ];
       });
-    }
-  }, [applications, findContainer]);
+
+      // --- Persist Change via tRPC Mutation ---
+      // Only call mutation if stage actually changed
+      if (activeContainer !== overContainer) {
+        // Ensure ID is a number if required by the backend/mutation schema
+        const numericId = typeof active.id === 'string' ? parseInt(active.id, 10) : active.id; 
+        if (!isNaN(numericId)) {
+           updateStatusMutation.mutate({
+             applicationId: numericId,
+             newStatus: overContainer, // The stage of the column dropped onto
+           });
+         } else {
+            console.error("Invalid application ID for mutation:", active.id);
+            toast({
+              title: "Update Failed",
+              description: "Invalid application ID.",
+              variant: "destructive",
+            });
+         }
+       }
+     }
+   }, [applications, findContainer, updateStatusMutation, initialApplications, utils, toast]); // Add toast to dependency array
 
   return (
     <DndContext
@@ -231,4 +305,4 @@ export function PipelineBoard({ initialApplications }: PipelineBoardProps) {
        {/* <DragOverlay>{activeId ? <JobCard ... /> : null}</DragOverlay> */} 
     </DndContext>
   );
-} 
+}

@@ -1,4 +1,6 @@
 import { postRouter } from "~/server/api/routers/post";
+import { applicationRouter } from "~/server/api/routers/application";
+import { visaRouter } from "~/server/api/routers/visa"; // Import visa router
 // import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -9,6 +11,8 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   post: postRouter,
+  application: applicationRouter,
+  visa: visaRouter, // Add visa router
   // auth: authRouter,
 });
 

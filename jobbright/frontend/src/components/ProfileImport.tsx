@@ -1,12 +1,17 @@
 'use client';
 
+'use client';
+
 import React, { useState } from 'react';
 import type { ChangeEvent } from 'react'; // Use type-only import
+import { useAuth0 } from '@auth0/auth0-react'; // Import useAuth0
 import { Button } from './ui/button';
 import { Input } from './ui/input'; // Assuming shadcn/ui input is here
 import { Label } from './ui/label'; // Assuming shadcn/ui label is here
+import { env } from '../env.js'; // Import env using relative path
 
 export function ProfileImport() {
+  const { getAccessTokenSilently } = useAuth0(); // Get token function
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string>('');
@@ -35,36 +40,47 @@ export function ProfileImport() {
     setIsUploading(true);
     setMessage(`Uploading ${selectedFile.name}...`);
 
-    // --- TODO: Replace with actual API call --- 
-    console.log('Uploading file:', selectedFile.name);
-    // Example: const formData = new FormData();
-    // formData.append('file', selectedFile);
-    // try {
-    //   const response = await fetch('/api/resumes/upload', { // Adjust API endpoint as needed
-    //     method: 'POST',
-    //     body: formData,
-    //     // Add authentication headers if needed
-    //   });
-    //   if (!response.ok) throw new Error('Upload failed');
-    //   const result = await response.json();
-    //   setMessage('Upload successful!');
-    //   console.log('Upload result:', result);
-    // } catch (error: any) {
-    //   setMessage(`Upload failed: ${error.message}`);
-    //   console.error('Upload error:', error);
-    // } finally {
-    //   setIsUploading(false);
-    // }
-    // --- End of placeholder --- 
+    try {
+      const token = await getAccessTokenSilently();
+      const formData = new FormData();
+      formData.append('file', selectedFile);
 
-    // Simulate upload delay for now
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setMessage(`Simulated upload complete for ${selectedFile.name}. Check console.`);
-    setIsUploading(false);
-    setSelectedFile(null); // Clear selection after simulated upload
-    // Reset file input visually if possible (tricky)
-    const fileInput = document.getElementById('resume-upload') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
+      const apiUrl = `${env.NEXT_PUBLIC_BACKEND_API_URL}/resumes/upload`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // 'Content-Type': 'multipart/form-data' is set automatically by fetch with FormData
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Upload failed with status: ' + response.status }));
+        throw new Error(errorData.detail || 'Upload failed');
+      }
+
+      const result = await response.json();
+      setMessage('Upload successful!');
+      console.log('Upload result:', result);
+      setSelectedFile(null); // Clear selection on success
+      // Reset file input visually
+      const fileInput = document.getElementById('resume-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      // Check if the error is from Auth0 (e.g., login required)
+      if (error.error === 'login_required' || error.error === 'consent_required') {
+         setMessage('Authentication required. Please log in and try again.');
+         // Optionally trigger login: loginWithRedirect();
+      } else {
+         setMessage(`Upload failed: ${error.message || 'An unknown error occurred.'}`);
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -91,4 +107,4 @@ export function ProfileImport() {
       {message && <p className={`mt-3 text-sm ${message.includes('failed') || message.includes('Please select') ? 'text-error' : 'text-accent'}`}>{message}</p>}
     </div>
   );
-} 
+}

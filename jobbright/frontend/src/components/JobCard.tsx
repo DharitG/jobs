@@ -14,8 +14,7 @@ interface JobCardProps {
   companyName: string;
   jobTitle: string;
   location?: string;
-  // Add other props like salary, date posted, application status etc. later
-  status?: string; // e.g., 'Applied', 'Interviewing'
+  stage?: string; // Renamed from status for consistency
   ctaLink?: string; // Link for a Call To Action button
   ctaText?: string; // Text for CTA button, e.g., 'View Job', 'Apply'
 }
@@ -31,7 +30,7 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
     companyName, 
     jobTitle, 
     location, 
-    status, 
+    stage, // Use renamed prop
     ctaLink, 
     ctaText = 'View' 
   }, ref) => {
@@ -81,10 +80,10 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
         {location && <p className="text-sm text-grey-40 truncate" title={location}>{location}</p>}
       </div>
 
-      {/* Column 3: Status Badge & CTA */}
+      {/* Column 3: Stage Badge & CTA */}
       <div className="flex flex-col items-end gap-2">
-        {status && (
-          <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider">{status}</Badge>
+        {stage && (
+          <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider">{stage}</Badge>
         )}
         {ctaLink && (
           <Button 
@@ -107,4 +106,4 @@ export const JobCard = React.forwardRef<HTMLDivElement, JobCardProps>((
 });
 
 // Add display name for better debugging
-JobCard.displayName = 'JobCard'; 
+JobCard.displayName = 'JobCard';
