@@ -4,7 +4,13 @@ import React, { useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '~/components/ui/card';
 import { Check } from 'lucide-react'; // Icon for feature lists
-// import { Tabs, TabsList, TabsTrigger, TabsContent } from "~/components/ui/tabs"; // For Monthly/Annual toggle
+import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs"; // For Monthly/Annual toggle - Uncommented
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "~/components/ui/accordion"; // Import Accordion components
 
 // Define tier structures (expand with actual features and pricing)
 const tiers = {
@@ -124,29 +130,24 @@ export default function PricingPage() {
         Select the plan that best fits your job search needs and career goals. Cancel anytime.
       </p>
 
-      {/* TODO: Implement Monthly/Annual Toggle using Tabs */}
-      {/* <Tabs defaultValue="monthly" onValueChange={(value) => setBillingCycle(value as 'monthly' | 'annual')} className="w-[400px] mx-auto mb-8">
+      {/* Implement Monthly/Annual Toggle using Tabs */}
+      <Tabs 
+        defaultValue="monthly" 
+        onValueChange={(value) => { // Accept string value
+          if (value === 'monthly' || value === 'annual') { // Validate value
+            setBillingCycle(value); 
+          }
+        }} 
+        className="w-full max-w-[300px] mx-auto mb-10" // Adjusted width and margin
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
-          <TabsTrigger value="annual">Annual (Save ~15%)</TabsTrigger>
+          {/* TODO: Calculate actual saving percentage */}
+          <TabsTrigger value="annual">Annual (Save)</TabsTrigger> 
         </TabsList>
-      </Tabs> */}
-       <div className="text-center mb-8">
-         {/* Basic Toggle Placeholder */}
-         <Button 
-            variant={billingCycle === 'monthly' ? 'default' : 'outline'} 
-            onClick={() => setBillingCycle('monthly')}
-            className="mr-2"
-          >
-            Monthly
-          </Button>
-         <Button 
-            variant={billingCycle === 'annual' ? 'default' : 'outline'} 
-            onClick={() => setBillingCycle('annual')}
-          >
-            Annual (Save!)
-          </Button>
-       </div>
+        {/* No TabsContent needed here as the grid below updates based on state */}
+      </Tabs>
+      {/* Removed the basic button toggle div */}
 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -184,13 +185,36 @@ export default function PricingPage() {
         ))}
       </div>
 
-      {/* TODO: Add FAQ section */}
-      {/* <div className="mt-16">
+      {/* Add FAQ section */}
+      <div className="mt-16 pt-12 border-t border-grey-20"> {/* Added top padding and border */}
          <h2 className="text-2xl font-bold text-center mb-8 text-grey-90 font-display">Frequently Asked Questions</h2>
          <Accordion type="single" collapsible className="w-full max-w-2xl mx-auto">
-            ... AccordionItems ...
+            <AccordionItem value="item-1">
+              <AccordionTrigger>Is there a free trial?</AccordionTrigger>
+              <AccordionContent>
+                Yes, our Free plan allows you to use core features like basic job matching and up to 50 auto-applies per month to see how JobBright works for you.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger>Can I cancel my subscription anytime?</AccordionTrigger>
+              <AccordionContent>
+                Absolutely. You can cancel your Pro or Elite subscription at any time through your account settings. You'll retain access until the end of your current billing period.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger>How does the auto-apply feature work?</AccordionTrigger>
+              <AccordionContent>
+                Our system uses your imported profile and resume details to intelligently fill out applications on supported job boards (like LinkedIn Easy Apply, Greenhouse, Lever). We aim for accuracy but always recommend reviewing submitted applications. The Pro and Elite tiers offer unlimited auto-applies.
+              </AccordionContent>
+            </AccordionItem>
+             <AccordionItem value="item-4">
+              <AccordionTrigger>What is VisaPulse?</AccordionTrigger>
+              <AccordionContent>
+                VisaPulse monitors changes in visa bulletin predictions and relevant immigration news, providing timely updates within the app. Pro users get access to integrated lawyer chat for quick questions related to their status and applications. *Disclaimer: VisaPulse is informational and not legal advice.*
+              </AccordionContent>
+            </AccordionItem>
          </Accordion>
-      </div> */}
+      </div>
     </div>
   );
 }

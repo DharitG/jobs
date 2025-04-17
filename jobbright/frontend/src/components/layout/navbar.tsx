@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth0 } from "@auth0/auth0-react"; // Import useAuth0
 import { Button } from "~/components/ui/button"; // Use ~ alias
+import { QuotaRing } from "~/components/QuotaRing"; // Import QuotaRing
 
 export function Navbar() {
   const { isAuthenticated, loginWithRedirect, logout, isLoading, user } = useAuth0();
@@ -21,10 +22,16 @@ export function Navbar() {
         </Link>
         <div className="flex flex-1 items-center justify-end space-x-4">
           {/* TODO: Add Navigation Links (Dashboard, Pricing) - Conditionally show Dashboard? */}
+          {/* TODO: Add Navigation Links (Dashboard, Pricing) */}
           {isLoading ? (
-            <Button variant="ghost" disabled>Loading...</Button>
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 rounded-full bg-muted animate-pulse"></div> {/* Placeholder for QuotaRing */}
+              <Button variant="ghost" disabled>Loading...</Button>
+            </div>
           ) : isAuthenticated ? (
             <>
+              {/* TODO: Fetch actual quota data */}
+              <QuotaRing remaining={35} total={50} /> 
               {/* TODO: Add user profile picture/dropdown */} 
               {/* <span className="text-sm text-muted-foreground">{user?.email}</span> */} 
               <Button onClick={handleLogOut} variant="ghost">
@@ -46,4 +53,4 @@ export function Navbar() {
       </div>
     </nav>
   );
-} 
+}

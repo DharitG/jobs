@@ -38,7 +38,7 @@ interface ApplicationItem {
   id: string | number;
   companyName: string;
   jobTitle: string;
-  location?: string;
+  location?: string | null; // Allow null
   stage: ApplicationStage;
   logoUrl?: string;
   ctaLink?: string;

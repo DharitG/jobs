@@ -173,9 +173,10 @@ Based on `vision.md`.
     *   ✅ Implement `PipelineBoard.tsx` component (Kanban)
     *   ✅ Integrate `JobCard.tsx` into PipelineBoard
     *   ✅ Add drag-and-drop functionality
-    *   ⬜ Connect dashboard components to backend data (tRPC procedure `application.list` created, needs testing/refinement)
+    *   ✅ Add Skeleton loader for loading state
+    *   🚧 Connect dashboard components to backend data (tRPC procedure `application.list` & `updateStatus` connected, needs real data testing/refinement)
 *   ✅ Implement Job listing/display (`components/JobCard.tsx`)
-*   ⬜ Connect Frontend API client to Backend endpoints (Dashboard connection implemented via tRPC, needs testing/refinement)
+*   🚧 Connect Frontend API client to Backend endpoints (Dashboard connection implemented via tRPC, needs testing/refinement)
 *   ⬜ Implement state management (e.g., Zustand, Redux Toolkit)
 
 ---
@@ -197,11 +198,11 @@ Based on `vision.md`.
 *   ⬜ Implement Interview Flash-Cards (LLM Q&A Feature) (Backend Service + UI)
 *   ⬜ Implement Priority Support Chat Bot (Integration)
 *   ⬜ Develop Browser Extension for ATS Auto-fill (`Assisted Application`)
-*   ⬜ Implement VisaPulse In-app Lawyer Chat (UI + Backend/Integration)
+*   🚧 Implement VisaPulse In-app Lawyer Chat (UI + Backend/Integration) (Placeholder button added to UI)
 *   ⬜ Implement Mock Interview Scheduling Feature (UI + Backend)
 *   ⬜ Implement Slack Alerts Feature (Backend Integration)
 *   ⬜ Implement Stripe integration for Pro subscriptions (`models/payment.py`, `schemas/payment.py`, `api/subs.py`)
-*   ⬜ Implement Paywall / Upgrade prompts in UI (`pages/pricing.tsx`)
+*   🚧 Implement Paywall / Upgrade prompts in UI (`pages/pricing.tsx`) (Basic structure, toggle, FAQ added; Stripe pending)
 
 ### Elite Tier ($99/mo)
 *   ⬜ Implement Personal Success Coach Feature (UI + Backend - Human/Agent Blend)
@@ -233,7 +234,7 @@ Based on `vision.md`.
 ## 6. Growth & Persuasion Features
 
 *   ⬜ Implement AIDA funnel copy on landing page (Content Task)
-*   ⬜ Implement Loss-aversion timer for VisaPulse free tier (UI)
+*   🚧 Implement Loss-aversion timer for VisaPulse free tier (UI) (Prompt added, timer/logic pending)
 *   ⬜ Implement Mini-milestones/confetti/badges (UI + Backend triggers)
 *   ⬜ Implement Affiliate rev-share tracking (Backend + UI for partners)
 *   ⬜ Implement Risk-reversal offer logic/tracking (Backend)
@@ -245,7 +246,7 @@ Based on `vision.md`.
 *   ⬜ Implement ToS Checks/API fallback for Scrapers (`services/scraping.py`)
 *   ⬜ Implement randomized intervals/human-like interaction in Auto-apply (`services/autosubmit.py`)
 *   ⬜ Encrypt PII at rest (Verify DB configuration)
-*   ⬜ Add Visa advice disclaimer in UI
+*   ✅ Add Visa advice disclaimer in UI (`components/VisaPulse.tsx`)
 *   ⬜ Conduct security audit before launch
 
 ---

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Badge } from './ui/badge'; // Use Badge for status dots
+import { Button } from './ui/button'; // Import Button component
 import { api } from '~/trpc/react'; // Import tRPC hook
 import { differenceInDays, parseISO, format } from 'date-fns'; // Import date-fns helpers
 
@@ -102,12 +103,41 @@ export function VisaPulse({ historyLimitDays = 7 }: VisaPulseProps) {
                   {item.description}
                 </p>
               )}
-              {/* TODO: Add lawyer booking button or other actions inline */}
+              {/* Placeholder for Pro Tier Lawyer Chat Button */}
+              {/* TODO: Conditionally render this based on user's plan */}
+              <div className="mt-2">
+                 <Button 
+                    variant="outline" 
+                    size="sm" // Changed from "xs" to "sm"
+                    className="text-xs h-6 px-2" // Keep custom classes for smaller appearance
+                    onClick={() => console.log('Lawyer chat clicked for item:', item.id)} // Placeholder action
+                 >
+                    Chat with Lawyer
+                 </Button>
+              </div>
             </li>
           ))}
         </ol>
       ) : (
         <p className="text-sm text-grey-40">No recent visa updates found.</p>
+      )}
+      {/* Add Visa Advice Disclaimer */}
+      <p className="mt-4 text-xs text-grey-40 italic">
+        *Disclaimer: VisaPulse provides informational updates based on publicly available data and predictions. It is not legal advice. Consult with an immigration attorney for advice specific to your situation.
+      </p>
+
+      {/* Loss Aversion / Upgrade Prompt for Free Tier */}
+      {historyLimitDays && historyLimitDays > 0 && ( // Show only if a limit is set
+         <div className="mt-4 p-3 bg-primary-500/10 border border-primary-500/20 rounded-md text-center">
+            <p className="text-sm font-medium text-primary-600">
+               You're viewing the last {historyLimitDays} days of updates.
+            </p>
+            <p className="text-xs text-primary-500/90 mt-1">
+               Upgrade to Pro to unlock the full history and lawyer chat access.
+            </p>
+            {/* TODO: Add actual upgrade button/link */}
+            {/* <Button size="sm" className="mt-2">Upgrade Now</Button> */}
+         </div>
       )}
     </div>
   );

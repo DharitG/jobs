@@ -13,7 +13,7 @@ interface JobCardProps {
   logoUrl?: string; // Optional logo URL
   companyName: string;
   jobTitle: string;
-  location?: string;
+  location?: string | null; // Allow null
   stage?: string; // Renamed from status for consistency
   ctaLink?: string; // Link for a Call To Action button
   ctaText?: string; // Text for CTA button, e.g., 'View Job', 'Apply'
