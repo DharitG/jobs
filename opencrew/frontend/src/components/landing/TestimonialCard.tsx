@@ -1,81 +1,72 @@
 import React from 'react';
 import Image from 'next/image';
-import { Star } from 'lucide-react';
-import { Card, CardContent } from '~/components/ui/card';
-import { Badge } from '~/components/ui/badge'; // Import Badge
+import { Badge } from '~/components/ui/badge'; // Keep Badge import
 import { cn } from '~/lib/utils';
 
-// Define the props interface
+// Define the props interface (keep existing props)
 interface TestimonialCardProps {
   avatarSrc: string;
   quote: string;
-  rating: number;
+  rating: number; // Keep prop for data consistency, even if not displayed
   name: string;
   position: string;
-  visaStatus?: 'H-1B' | 'OPT' | 'Green Card' | 'Citizen' | 'Other'; // Optional visa status
-  className?: string; // Allow className to be passed
+  visaStatus?: 'H-1B' | 'OPT' | 'Green Card' | 'Citizen' | 'Other';
+  className?: string;
 }
 
+// Adopt the structure and styling from ReviewCard example
 export function TestimonialCard({
   avatarSrc,
   quote,
-  rating,
+  // rating, // Rating is not displayed in this design
   name,
   position,
   visaStatus,
   className,
 }: TestimonialCardProps) {
   return (
-    <Card className={cn("overflow-hidden bg-white shadow-1 rounded-design-md", className)}> {/* Use white background */}
-      <CardContent className="p-6">
-        {/* Rating */}
-        <div className="flex items-center mb-4">
-          {[...Array(5)].map((_, i) => (
-            <Star
-              key={i}
-              className={cn(
-                "h-5 w-5",
-                i < rating ? "text-yellow-400 fill-yellow-400" : "text-grey-20"
-              )}
-            />
-          ))}
+    <figure
+      className={cn(
+        // Base styles from ReviewCard example
+        "relative h-full cursor-pointer overflow-hidden rounded-xl border p-4",
+        // Light mode styles from ReviewCard
+        "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
+        // Dark mode styles (assuming dark mode might be added later)
+        "dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]",
+        // Allow external classes to override/extend
+        className,
+      )}
+    >
+      {/* Header section with avatar and name/position */}
+      <div className="flex flex-row items-center gap-2">
+        <Image
+          className="rounded-full"
+          width={32} // Use smaller avatar size like ReviewCard
+          height={32}
+          alt={`${name} avatar`}
+          src={avatarSrc}
+        />
+        <div className="flex flex-col">
+          {/* Name */}
+          <figcaption className="text-sm font-medium text-gray-900 dark:text-white">
+            {name}
+          </figcaption>
+          {/* Position */}
+          <p className="text-xs font-medium text-gray-600 dark:text-white/40">
+            {position}
+          </p>
+          {/* Optional Visa Status Badge */}
+          {visaStatus && (
+            <Badge variant="outline" className="mt-1 text-xs w-fit"> {/* Make badge fit content */}
+              {visaStatus}
+            </Badge>
+          )}
         </div>
-
-        {/* Quote */}
-        <blockquote className="mb-6 text-grey-90 italic">
-          <p>"{quote}"</p>
-        </blockquote>
-
-        {/* Author Info */}
-        <div className="flex items-center">
-          <Image
-            src={avatarSrc}
-            alt={`${name} avatar`}
-            width={48}
-            height={48}
-            className="rounded-full mr-4"
-          />
-          <div>
-            <p className="font-semibold text-grey-90">{name}</p>
-            <p className="text-sm text-grey-40">{position}</p>
-            {visaStatus && (
-              <Badge variant="outline" className="mt-1 text-xs">
-                {visaStatus}
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      {/* Quote */}
+      <blockquote className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+        {quote} {/* Removed surrounding quotes for cleaner look */}
+      </blockquote>
+    </figure>
   );
 }
-
-// Example Usage (can be removed or kept for reference):
-// <TestimonialCard
-//   avatarSrc="/path/to/avatar.jpg"
-//   quote="OpenCrew saved me weeks of tedious applications and landed me my dream job!" // Updated name
-//   rating={5}
-//   name="Jane Doe"
-//   position="Product Manager @ Startup"
-//   visaStatus="H-1B"
-// />

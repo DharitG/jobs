@@ -8,7 +8,7 @@ import { WowFeaturesGrid } from "~/components/landing/WowFeaturesGrid";
 import { HowItWorksSection } from "~/components/landing/HowItWorksSection";
 import { TestimonialCarousel } from "~/components/landing/TestimonialCarousel";
 import { PricingSection } from "~/components/landing/PricingSection";
-import { GuaranteeSection } from "~/components/landing/GuaranteeSection";
+// Removed GuaranteeSection import
 import { FaqSection } from "~/components/landing/FaqSection";
 import { FinalCtaSection } from "~/components/landing/FinalCtaSection";
 
@@ -27,7 +27,7 @@ export default function Home() {
         <HowItWorksSection />
         <TestimonialCarousel />
         <PricingSection />
-        <GuaranteeSection />
+        {/* Removed GuaranteeSection component */}
         <FaqSection />
         <FinalCtaSection />
       </main>

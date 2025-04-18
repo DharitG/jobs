@@ -42,7 +42,7 @@ export function Footer() {
     // Adopted structure from the new design
     <footer className="w-full text-white relative overflow-hidden">
       {/* Showcase gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-blue-900 via-purple-900 to-pink-900 z-0"></div> {/* Example gradient, adjust as needed */}
+      <div className="absolute inset-0 showcase-gradient z-0"></div> {/* Applied showcase-gradient class */}
 
       {/* Background grid pattern for texture */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMjIiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2djZoNnYtNmgtNnptLTEyIDBoNnY2aC02di02em0xMiAwaDZ2NmgtNnYtNnoiLz48cGF0aCBkPSJNMTIgMTJoNnY2aC02di02em06IDBoNnY2aC02di02em0xMiAwaDZ2NmgtNnYtNnptLTEyIDBoNnY2aC02di02em0xMiAwaDZ2NmgtNnYtNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20 z-0"></div>
@@ -65,7 +65,7 @@ export function Footer() {
                      {/* OpenCrew Logo */}
                      <Link href="/" className="inline-block mb-2">
                        <Image
-                         src="/assets/f5ed6ae4-3d2b-488d-9048-65a12d962da6.png"
+                         src="/assets/image.png"
                          alt="OpenCrew Logo"
                          width={140}
                          height={35}

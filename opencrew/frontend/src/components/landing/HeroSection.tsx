@@ -24,7 +24,7 @@ export function HeroSection() {
   return (
     <section
       // Replaced bg-grey-5 and inline style with gradient classes, removed top padding (pt-20 md:pt-24)
-      className="relative flex min-h-[85vh] items-center bg-gradient-to-r from-primary-500 to-accent" // Removed pt-20 md:pt-24
+      className="relative flex min-h-[85vh] items-center showcase-gradient" // Replaced gradient classes with showcase-gradient
     >
       {/* Removed Masking overlay div */}
 

@@ -109,7 +109,7 @@ export function PricingSection() {
 
         {/* Microcopy */}
         <p className="mt-12 text-center text-sm text-grey-40">
-          Cancel anytime • 30-day money-back guarantee
+          Land an interview in 30 days or your money back—no fine print. <br /> Cancel anytime • 30-day money-back guarantee
         </p>
       </div>
     </section>
