@@ -58,7 +58,8 @@ export default function RootLayout({
         <TRPCReactProvider> {/* Removed cookies prop */}
           <ClientProviders> {/* Wrap content with ClientProviders */}
             <Navbar /> {/* Add Navbar */}
-            <main>{children}</main>
+            {/* Apply negative top margin to pull main content under navbar */}
+            <main className="mt-[-72px]">{children}</main>
             <Footer /> {/* Add Footer */}
             <Toaster /> {/* Add Toaster for notifications */}
           </ClientProviders>

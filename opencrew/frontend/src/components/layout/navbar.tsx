@@ -1,84 +1,101 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image"; // Import Image component
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Button } from "~/components/ui/button";
-// Removed Sparkles import
-import { cn } from "~/lib/utils";
-// Removed Confetti and useWindowSize imports
-
-// Note: This Navbar is modified for the landing page spec.
-// Original logic for authenticated users (Dashboard link, QuotaRing, Logout) is removed for clarity.
-// Consider creating a separate LandingNavbar or adding conditional logic if needed elsewhere.
+import Link from "next/link"; // Keep Link for the logo text
+import {
+  Navbar as ResizableNavbarRoot, // Renamed to avoid conflict with the component name
+  NavBody,
+  NavItems,
+  MobileNav,
+  NavbarButton,
+  MobileNavHeader,
+  MobileNavToggle,
+  MobileNavMenu,
+} from "~/components/ui/resizable-navbar"; // Use path alias
+import { cn } from "~/lib/utils"; // Keep cn if needed, though the new component handles its own styling
 
 export function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
   const { loginWithRedirect } = useAuth0();
-  // Removed showConfetti state and width/height
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Handle scroll detection
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 32); // Trigger after 32px scroll as per spec
-    };
-    window.addEventListener("scroll", handleScroll);
-    // Initial check in case page loads already scrolled
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const navItems = [
+    {
+      name: "Product",
+      link: "/#product-tour",
+    },
+    {
+      name: "Pricing",
+      link: "/#pricing",
+    },
+    // Add other nav items if needed
+  ];
 
-  const handleLogin = () => loginWithRedirect();
+  const handleLogin = () => {
+    loginWithRedirect();
+    setIsMobileMenuOpen(false); // Close mobile menu on action
+  };
 
-  // Reverted handleGetStarted to simple redirect
-  const handleGetStarted = () => loginWithRedirect({ authorizationParams: { screen_hint: "signup" } });
+  const handleGetStarted = () => {
+    loginWithRedirect({ authorizationParams: { screen_hint: "signup" } });
+    setIsMobileMenuOpen(false); // Close mobile menu on action
+  };
 
   return (
-    <nav
-      className={cn(
-        "sticky top-0 z-50 w-full transition-all duration-300 ease-in-out",
-        // Apply background and blur effect when scrolled
-        scrolled
-          ? "border-b border-grey-20 bg-grey-5/90 backdrop-blur supports-[backdrop-filter]:bg-grey-5/90"
-          : "bg-transparent border-b border-transparent" // Transparent initially
-      )}
-      style={{ height: '72px' }} // Set height as per spec
-    >
-      <div className="container flex h-full max-w-screen-2xl items-center"> {/* Ensure h-full */}
-        {/* Logo */}
-        <Link href="/" className="mr-auto flex items-center">
-          {/* Replace Sparkles and text with Image */}
-          <Image
-            src="/assets/f5ed6ae4-3d2b-488d-9048-65a12d962da6.png"
-            alt="OpenCrew Logo"
-            width={120} // Adjust width as needed
-            height={30} // Adjust height as needed
-            className="h-auto" // Maintain aspect ratio
-          />
-          {/* Optional: Keep the text name if desired, or remove */}
-          {/* <span className="font-bold font-display text-lg text-primary-500 ml-2">OpenCrew</span> */}
+    // Use the ResizableNavbarRoot component. Adjust top positioning if needed (original was top-0, new is top-20 default)
+    // Changed sticky top-20 to top-0 and added custom class for height
+    <ResizableNavbarRoot className="top-0 h-[72px]">
+      {/* Desktop Navigation */}
+      <NavBody className="max-w-screen-2xl"> {/* Use container width from old navbar */}
+        {/* Replace Logo component with simple text */}
+        <Link href="/" className="relative z-20 mr-auto flex items-center px-2 py-1 text-lg font-bold text-black dark:text-white">
+          opencrew
         </Link>
-
-        {/* Landing Page Navigation Links & CTA */}
-        <div className="flex items-center space-x-4">
-          {/* Use specified classes for links */}
-          <Link href="/#product-tour" scroll={true} className="mx-4 text-sm font-medium text-grey-40 hover:text-grey-90 transition-colors">
-            Product
-          </Link>
-          <Link href="/#pricing" scroll={true} className="mx-4 text-sm font-medium text-grey-40 hover:text-grey-90 transition-colors">
-            Pricing
-          </Link>
-          {/* Login button using ghost variant */}
-          <Button onClick={handleLogin} variant="ghost" size="sm" className="mx-4 text-sm font-medium text-grey-40 hover:text-grey-90">
+        <NavItems items={navItems} onItemClick={() => setIsMobileMenuOpen(false)} />
+        <div className="relative z-20 flex items-center gap-4">
+          {/* Use NavbarButton from resizable-navbar, map variants if needed */}
+          {/* Assuming 'secondary' maps to ghost/text-like and 'primary' maps to default */}
+          <NavbarButton onClick={handleLogin} variant="secondary" className="text-sm font-medium text-grey-40 hover:text-grey-90 dark:text-neutral-300">
             Login
-          </Button>
-          {/* Get Started CTA */}
-          <Button onClick={handleGetStarted} variant="default" size="sm">
+          </NavbarButton>
+          <NavbarButton onClick={handleGetStarted} variant="primary" className="text-sm"> {/* Use primary variant from new component */}
             Get Started
-          </Button>
+          </NavbarButton>
         </div>
-      </div>
-    </nav>
+      </NavBody>
+
+      {/* Mobile Navigation */}
+      <MobileNav className="max-w-screen-2xl"> {/* Use container width */}
+        <MobileNavHeader>
+           {/* Replace Logo component with simple text */}
+           <Link href="/" className="relative z-20 flex items-center px-2 py-1 text-lg font-bold text-black dark:text-white">
+             opencrew
+           </Link>
+          <MobileNavToggle isOpen={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+        </MobileNavHeader>
+
+        <MobileNavMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)}>
+          {navItems.map((item, idx) => (
+            <a
+              key={`mobile-link-${idx}`}
+              href={item.link}
+              onClick={() => setIsMobileMenuOpen(false)} // Close menu on item click
+              className="relative text-neutral-600 dark:text-neutral-300" // Style as needed
+            >
+              <span className="block">{item.name}</span>
+            </a>
+          ))}
+          <div className="flex w-full flex-col gap-4 pt-4">
+             {/* Use NavbarButton from resizable-navbar */}
+            <NavbarButton onClick={handleLogin} variant="secondary" className="w-full text-sm font-medium text-grey-40 hover:text-grey-90 dark:text-neutral-300">
+              Login
+            </NavbarButton>
+            <NavbarButton onClick={handleGetStarted} variant="primary" className="w-full text-sm">
+              Get Started
+            </NavbarButton>
+          </div>
+        </MobileNavMenu>
+      </MobileNav>
+    </ResizableNavbarRoot>
   );
 }

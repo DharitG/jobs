@@ -23,15 +23,13 @@ export function HeroSection() {
 
   return (
     <section
-      className="relative flex min-h-[85vh] items-center overflow-hidden bg-grey-5 pt-20 md:pt-24" // Use min-height, padding top for nav offset
-      // Apply background image
-      style={{
-        backgroundImage: `url('/background.png')`, // Removed radial gradient overlay
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      // Replaced bg-grey-5 and inline style with gradient classes, removed top padding (pt-20 md:pt-24)
+      className="relative flex min-h-[85vh] items-center bg-gradient-to-r from-primary-500 to-accent" // Removed pt-20 md:pt-24
     >
-      <div className="container mx-auto grid grid-cols-1 items-center gap-12 px-4 md:grid-cols-2 lg:gap-20">
+      {/* Removed Masking overlay div */}
+
+      {/* Removed relative z-10 from content container, Added pt-[72px] to compensate for negative margin on main */}
+      <div className="container mx-auto grid grid-cols-1 items-center gap-12 px-4 pt-[72px] md:grid-cols-2 lg:gap-20">
         {/* Column L: Text Content */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -46,7 +44,7 @@ export function HeroSection() {
             50 tailored applications in the next hour—while you grab coffee.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row justify-center md:justify-start gap-3">
-            <Button size="lg" onClick={scrollToPricing}>
+            <Button variant="default" size="lg" onClick={scrollToPricing}>
               Get Started Free
             </Button>
             <Button variant="ghost" size="lg" onClick={openModal}>
@@ -63,10 +61,11 @@ export function HeroSection() {
           className="flex justify-center" // This div gets wrapped
         >
           {/* Mockup card with video */}
-          <div className="relative w-full max-w-[640px] aspect-[640/420] rounded-design-md shadow-1 ring-1 ring-primary-500/10 overflow-hidden">
+          {/* Added padding p-4 to the container, reverted video classes */}
+          <div className="relative w-full max-w-[640px] aspect-[640/420] rounded-design-md shadow-1 ring-1 ring-primary-500/10 overflow-hidden p-4 bg-white dark:bg-black"> {/* Added padding and explicit background */}
             {/* Replace with actual video source */}
             <video
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain" // Reverted to inset-0, h/w-full, object-contain
               src="/placeholder-pipeline-animation.mp4" // Placeholder path
               autoPlay
               loop
