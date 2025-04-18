@@ -234,6 +234,7 @@ Based on `vision.md`.
 ## 6. Growth & Persuasion Features
 
 *   ✅ Implement AIDA funnel copy on landing page (Content Task) (Hero section copy implemented)
+*   ✅ Make hero background image fully visible (remove overlay)
 *   ✅ Implement Loss-aversion timer for VisaPulse free tier (UI) (Prompt added, timer logic implemented)
 *   🚧 Implement Mini-milestones/confetti/badges (UI + Backend triggers) (UI component `MilestoneBadge.tsx` created, blocked by backend triggers/data)
 *   🚧 Implement Affiliate rev-share tracking (Backend + UI for partners) (UI component `AffiliateDashboard.tsx` created, blocked by backend/tRPC)

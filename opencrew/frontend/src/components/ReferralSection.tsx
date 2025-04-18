@@ -13,13 +13,13 @@ import { useToast } from '~/hooks/use-toast';
 
 export function ReferralSection() {
   // Placeholder state - replace with tRPC query later
-  const [referralCode, setReferralCode] = useState('JOBBRIGHT123'); // Example code
+  const [referralCode, setReferralCode] = useState('OPENCREW123'); // Example code, updated name
   const [creditsEarned, setCreditsEarned] = useState(10); // Example credits ($)
   const isLoading = false; // Placeholder
   const error = null; // Placeholder
   const { toast } = useToast();
 
-  const referralLink = `https://jobbright.ai/signup?ref=${referralCode}`;
+  const referralLink = `https://opencrew.ai/signup?ref=${referralCode}`; // Updated domain
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink)
@@ -47,7 +47,7 @@ export function ReferralSection() {
           <Gift className="mr-2 h-5 w-5 text-primary-500" />
           Referrals & Credits
         </CardTitle>
-        <CardDescription>Share JobBright and earn credits towards your subscription.</CardDescription>
+        <CardDescription>Share OpenCrew and earn credits towards your subscription.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>

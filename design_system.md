@@ -1,158 +1,269 @@
-Below is a ground‑up design system (“JobBright UI 2.0”) you can drop straight into a React / Next.js + Tailwind (with shadcn/ui) codebase. It’s opinionated for: clarity ➜ trust ➜ conversion.
+# JobBright UI 2.0 Design System
 
-1 Foundation tokens
+This document outlines the design system for JobBright UI 2.0, intended for a React / Next.js + Tailwind CSS (with shadcn/ui) codebase. It prioritizes clarity, trust, and conversion.
 
+## 1. Foundation Tokens
 
-Token	Value	Rationale
-Primary 500	#3E6DFF	Eye‑catching cobalt = “action” without fintech‑blue fatigueåç
-Primary 600	#345BDB	Hover/active
-Accent / Success	#18B26E	“Got an interview” flash moments
-Warning	#F8A315	Visa deadlines, quota alerts
-Error	#E34C4C	Failed submit, payment issues
-Grey 00	#FFFFFF	Base
-Grey 05	#F7F8FC	App background
-Grey 20	#E1E4F0	Dividers
-Grey 40	#B6BDD4	Secondary text
-Grey 90	#12172B	Main text
-Shadow‑elevation‑1	0 1px 4px rgba(18,23,43,0.08)	Cards/buttons
-Radii	0.75rem (12 px) everywhere	Friendly yet professional
-Spacing scale	2 → 4 → 8 → 12 → 16 → 24 → 32 px	Consistent rhythm
-Typography
+### Colors
 
-font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI";
-font-display headings: "Satoshi", "Inter", sans-serif;
+| Token          | Value     | Rationale                                       |
+| :------------- | :-------- | :---------------------------------------------- |
+| Primary 500    | `#3E6DFF` | Eye-catching cobalt = "action"                  |
+| Primary 600    | `#345BDB` | Hover/active state for Primary 500            |
+| Accent/Success | `#18B26E` | "Got an interview" flash moments                |
+| Warning        | `#F8A315` | Visa deadlines, quota alerts                    |
+| Error          | `#E34C4C` | Failed submit, payment issues                   |
+| Grey 00        | `#FFFFFF` | Base white                                      |
+| Grey 05        | `#F7F8FC` | Application background                          |
+| Grey 20        | `#E1E4F0` | Dividers                                        |
+| Grey 40        | `#B6BDD4` | Secondary text                                  |
+| Grey 90        | `#12172B` | Main text                                       |
 
-Text role	Size / weight	Line height
-h1	2.25 rem • 700	1.2
-h2	1.75 rem • 700	1.25
-h3	1.375 rem • 600	1.3
-body‑lg	1 rem • 500	1.55
-body	.9375 rem • 400	1.55
-caption	.8125 rem • 400	1.4
-2 Component catalogue (atomic → composite)
+### Shadows
 
-2.1 Atoms
-Button (<Button variant="primary|secondary|ghost|danger">)
-Primary ‑ filled, white text, shadow‑1 ➜ raise on hover (translate‑y‑[-1px], intensify shadow).
-Secondary ‑ border-primary‑500, transparent bg, text primary.
-Ghost ‑ text grey‑90 → primary‑500 on hover.
-Input – 2 px inset outline on focus (ring-primary‑500/40), error ring crimson.
-Badge – pill radius (full), small uppercase, weight 600.
-Tooltip – 10 px radius, dark rgba(18,23,43,0.9), 200 ms fade.
-2.2 Molecules
-JobCard
-3‑col grid: logo 56×56, job meta, right‑side CTA.
-Company in bold, title regular, location grey‑40.
-Hover → outline primary‑500/20 + slight lift.
-ProgressMeter
-Horizontal bar, 4 segments (Applied, Screening, Interview, Offer) – animated gradient sweep when stage achieved.
-QuotaRing
-Circular progress conic‑gradient from primary‑500 to grey‑20; centre shows {remaining}.
-CTA Banner
-Striped glassmorphic background (backdrop‑blur‑lg, 20 % white) + “🔒 Unlimited auto‑apply” copy, large Upgrade button.
-2.3 Organisms
-Application Pipeline Board
-Kanban columns with JobCard drag‑n‑drop (dnd‑kit).
-Column headers sticky w/ count badge; drop shadow on scroll.
-VisaPulse Timeline
-Vertical timeline dots coloured by status (info/warning).
-Collapsible daily items; lawyer booking button inline.
-Paywall Modal
-640 px max‑w, dual‑column: benefits list left, price card right.
-Subtle confetti animation on successful upgrade.
-2.4 Template pages
+| Token              | Value                             | Usage         |
+| :----------------- | :-------------------------------- | :------------ |
+| Shadow Elevation 1 | `0 1px 4px rgba(18,23,43,0.08)` | Cards/buttons |
 
-Page	Key UI regions
-Dashboard	Top nav (logo, quota ring, upgrade chip) • left sidebar (icons only on >1024 px; collapsible) • main grid (Pipeline + Insights)
-Onboarding wizard	Step progress bar • content pane • persistent Skip for now link (reduces churn)
-Pricing	Segment control (Monthly/Annual) • tier cards w/ feature matrix • FAQ accordion
-3 Interaction design & motion
+### Radii
 
-120 ms ease‑out‑cubic on interactive elements.
-Pipeline column changes animate with spring (stiffness 200, damping 20).
-Skeleton loaders (shimmer) on dashboard during scraping.
-Toasts slide in from bottom‑right; success = accent green, error = crimson.
-4 Accessibility & responsiveness
+*   **Default:** `0.75rem` (12px) - Applied consistently for a friendly yet professional look.
 
-Color‑contrast AA guaranteed (4.5:1 body, 3:1 large text).
-Focus rings: solid 2 px primary‑500 offset 2 px.
-Breakpoints: sm 640, md 768, lg 1024, xl 1280, 2xl 1536.
-Mobile: bottom tab bar replaces sidebar; sticky Upgrade button.
-Keyboard‑navigable Kanban (⌘← / → to change columns).
-5 Implementation files
+### Spacing
 
+*   **Scale:** `2px` → `4px` → `8px` → `12px` → `16px` → `24px` → `32px` - Ensures consistent rhythm.
+
+### Typography
+
+*   **Sans Serif Font:** `"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI"`
+*   **Display Font (Headings):** `"Satoshi", "Inter", sans-serif`
+
+| Text Role | Size / Weight   | Line Height |
+| :-------- | :-------------- | :---------- |
+| h1        | 2.25rem / 700   | 1.2         |
+| h2        | 1.75rem / 700   | 1.25        |
+| h3        | 1.375rem / 600  | 1.3         |
+| body-lg   | 1rem / 500      | 1.55        |
+| body      | 0.9375rem / 400 | 1.55        |
+| caption   | 0.8125rem / 400 | 1.4         |
+
+## 2. Component Catalogue
+
+### 2.1 Atoms
+
+*   **Button (`<Button variant="...">`)**
+    *   `default`: (Primary Action) Filled `bg-primary-500`, white text (`text-primary-foreground`), `shadow-1`. Raises slightly on hover (`hover:translate-y-[-1px]`, intensified shadow). Uses `primary-600` for hover background.
+    *   `secondary`: `bg-secondary` (Grey 05/10?), `text-secondary-foreground` (Grey 90), `border`. Hover: `bg-accent` (Grey 20?).
+    *   `outline`: Transparent background, `border border-input` (Grey 20?), `text-primary-500`. Hover: `bg-accent` (Grey 05?), `text-accent-foreground` (Primary 500?).
+    *   `ghost`: Transparent background, `text-grey-90`. Hover: `bg-accent` (Grey 05?), `text-primary-500`.
+    *   `destructive`: (Error/Danger) Filled `bg-error`, `text-destructive-foreground` (white). Hover: `bg-error/90`.
+    *   `link`: Transparent background, `text-primary-500`, underline on hover.
+*   **Input:** Standard input style. Focus: `ring-2 ring-ring ring-offset-2` (using `primary-500/40` for the ring color). Error state: `ring-destructive`.
+*   **Badge:** Pill shape (`rounded-full`), small uppercase text, `font-semibold`.
+*   **Tooltip:** `rounded-lg` (10px), dark background (`rgba(18,23,43,0.9)`), `200ms` fade animation.
+
+### 2.2 Molecules
+
+*   **JobCard:**
+    *   3-column grid: Logo (56x56px), Job Metadata, Right-side CTA.
+    *   Company name: `font-bold`. Job title: `font-normal`. Location: `text-grey-40`.
+    *   Hover: `outline outline-1 outline-primary-500/20`, slight lift (`translate-y-[-1px]`).
+*   **ProgressMeter:**
+    *   Horizontal bar segmented (Applied, Screening, Interview, Offer).
+    *   Animated gradient sweep indicates stage completion.
+*   **QuotaRing:**
+    *   Circular progress indicator using `conic-gradient` from `primary-500` to `grey-20`.
+    *   Center displays remaining quota count (`{remaining}`).
+*   **CTA Banner:**
+    *   Striped glassmorphic background (`backdrop-blur-lg`, `bg-white/20`).
+    *   Text: "🔒 Unlimited auto-apply".
+    *   Large "Upgrade" button (`variant="default"`).
+
+### 2.3 Organisms
+
+*   **Application Pipeline Board:**
+    *   Kanban layout using `dnd-kit` for drag-and-drop JobCards.
+    *   Sticky column headers with item count badges.
+    *   Drop shadow appears on scroll.
+*   **VisaPulse Timeline:**
+    *   Vertical timeline with status dots (info/warning colors).
+    *   Collapsible items for daily entries.
+    *   Inline "Book Lawyer" button.
+*   **Paywall Modal:**
+    *   Max width `640px`.
+    *   Dual-column layout: Benefits list (left), Price card (right).
+    *   Subtle confetti animation on successful upgrade.
+
+### 2.4 Template Pages
+
+| Page             | Key UI Regions                                                                 |
+| :--------------- | :----------------------------------------------------------------------------- |
+| **Dashboard**    | Top Nav (Logo, Quota Ring, Upgrade Chip), Left Sidebar (Collapsible), Main Grid (Pipeline + Insights) |
+| **Onboarding**   | Step Progress Bar, Content Pane, Persistent "Skip for now" link                |
+| **Pricing**      | Segment Control (Monthly/Annual), Tier Cards, FAQ Accordion                    |
+
+## 3. Interaction Design & Motion
+
+*   **Default Transition:** `120ms ease-out-cubic` for interactive elements.
+*   **Pipeline Animation:** Spring animation (`stiffness: 200`, `damping: 20`) for column changes.
+*   **Loading States:** Skeleton loaders with shimmer effect on dashboard during data fetching.
+*   **Toasts:** Slide in from bottom-right. Success: `bg-accent`. Error: `bg-error`.
+
+## 4. Accessibility & Responsiveness
+
+*   **Color Contrast:** AA compliant (4.5:1 for body, 3:1 for large text).
+*   **Focus Rings:** Solid `2px primary-500` ring with `2px` offset.
+*   **Breakpoints:** `sm: 640px`, `md: 768px`, `lg: 1024px`, `xl: 1280px`, `2xl: 1536px`.
+*   **Mobile:** Bottom tab bar replaces sidebar navigation. Sticky "Upgrade" button.
+*   **Keyboard Navigation:** Kanban board navigable (`Cmd + Left/Right` for columns).
+
+## 5. Implementation Files
+
+```plaintext
 frontend/
 └─ src/
    ├─ styles/
-   │   ├─ tailwind.config.ts   // tokens, extend colors, fontFamily
-   │   └─ globals.css          // resets, body bg-grey05
-   ├─ components/ui/
+   │   ├─ tailwind.config.ts   # tokens, extend colors, fontFamily
+   │   └─ globals.css          # resets, body bg-grey-5
+   ├─ components/ui/          # shadcn/ui components
    │   ├─ button.tsx
    │   ├─ input.tsx
    │   ├─ badge.tsx
    │   └─ tooltip.tsx
-   ├─ components/
+   │   └─ ...                 # Other shadcn components
+   ├─ components/             # Custom composite components
    │   ├─ JobCard.tsx
    │   ├─ ProgressMeter.tsx
    │   ├─ QuotaRing.tsx
    │   ├─ PipelineBoard.tsx
    │   ├─ VisaPulse.tsx
    │   └─ PaywallModal.tsx
-   └─ pages/…
-Tailwind snippets
+   │   └─ ...
+   └─ app/                    # Next.js App Router structure
+       └─ ...
+```
 
-// tailwind.config.ts
-export default {
+## 6. Tailwind Configuration Snippet
+
+```typescript
+// tailwind.config.ts / tailwind.config.js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  // ... other shadcn/ui config
   theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
     extend: {
       colors: {
+        border: "hsl(var(--border))", // Typically Grey 20 equivalent
+        input: "hsl(var(--input))",   // Typically Grey 20 equivalent
+        ring: "hsl(var(--ring))",     // Typically Primary 500/40 equivalent
+        background: "hsl(var(--background))", // Typically Grey 05
+        foreground: "hsl(var(--foreground))", // Typically Grey 90
         primary: {
-          500: "#3E6DFF",
-          600: "#345BDB",
+          DEFAULT: "hsl(var(--primary))", // #3E6DFF
+          foreground: "hsl(var(--primary-foreground))", // White
+          600: "#345BDB", // Keep for specific hover if needed
         },
-        accent: "#18B26E",
-        warning: "#F8A315",
-        error: "#E34C4C",
-        grey: {
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))", // Typically Grey 10/20
+          foreground: "hsl(var(--secondary-foreground))", // Typically Grey 90
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))", // #E34C4C
+          foreground: "hsl(var(--destructive-foreground))", // White
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))", // Typically Grey 20
+          foreground: "hsl(var(--muted-foreground))", // Typically Grey 40
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))", // #18B26E (Success) or Grey 10/20 for hover
+          foreground: "hsl(var(--accent-foreground))", // White or Grey 90
+        },
+        warning: { // Custom addition
+          DEFAULT: "#F8A315",
+          foreground: "#12172B", // Dark text for contrast
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))", // White
+          foreground: "hsl(var(--popover-foreground))", // Grey 90
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))", // White
+          foreground: "hsl(var(--card-foreground))", // Grey 90
+        },
+        grey: { // Keep custom greys if needed beyond shadcn defaults
           5: "#F7F8FC",
           20: "#E1E4F0",
           40: "#B6BDD4",
           90: "#12172B",
         },
       },
-      borderRadius: { md: "0.75rem" },
-      boxShadow: {
-        1: "0 1px 4px rgba(18,23,43,0.08)",
+      borderRadius: {
+        lg: "var(--radius)", // Use shadcn radius variable (0.75rem)
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        display: ["Satoshi", "Inter", "sans-serif"],
+        sans: ["var(--font-sans)", "sans-serif"], // Use CSS variable
+        display: ["Satoshi", "var(--font-sans)", "sans-serif"], // Add Satoshi
+      },
+      boxShadow: {
+         '1': "0 1px 4px rgba(18,23,43,0.08)", // Keep custom shadow if needed
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
     },
   },
-};
-6 Voice, micro‑copy & branding lines
+  plugins: [require("tailwindcss-animate")],
+  // ... rest of shadcn/ui config (darkMode, content paths)
+}
+```
+*Note: The Tailwind config snippet assumes you are using CSS variables as recommended by `shadcn/ui`. You'll need to define these variables (e.g., in `globals.css`) based on the color palette.*
 
+## 7. Voice, Micro-copy & Branding Lines
 
-Situation	Copy	Psychological nudge
-Hero	“Stop applying. Start interviewing.”	Pain inversion
-Sub‑hero	“50 fully‑tailored applications in the next hour—while you grab coffee.”	Time save
-Upgrade	“Unlock unlimited momentum →”	Momentum framing
-Empty state (pipeline)	“No jobs here (yet). Let’s change that—add your first search.”	Encouraging, forward‑looking
-Success toast	“🎉 Interview booked! We’ll handle prep.”	Instant gratification
-Tone principles
+| Situation             | Copy                                                                 | Psychological Nudge             |
+| :-------------------- | :------------------------------------------------------------------- | :------------------------------ |
+| Hero                  | "Stop applying. Start interviewing."                                 | Pain inversion                  |
+| Sub-hero              | "50 fully-tailored applications in the next hour—while you grab coffee." | Time save                       |
+| Upgrade CTA           | "Unlock unlimited momentum →"                                        | Momentum framing                |
+| Empty State (Pipeline)| "No jobs here (yet). Let’s change that—add your first search."       | Encouraging, forward-looking    |
+| Success Toast         | "🎉 Interview booked! We’ll handle prep."                            | Instant gratification           |
 
-Direct (“You” sentences, verbs first).
-Positive friction (explain next step, reduce overwhelm).
-Micro‑celebrations (confetti, checkmarks) to reinforce progress.
+### Tone Principles
 
-7 Asset guidelines
+*   **Direct:** Use "You" sentences, lead with verbs.
+*   **Positive Friction:** Explain the next step clearly to reduce user overwhelm.
+*   **Micro-celebrations:** Use confetti, checkmarks, etc., to reinforce progress.
 
-Logo – simple wordmark “JobBright” + spark icon (angled 15°) in Primary 500.
-Illustrations – 2‑D line art with cobalt accents (open‑source Blush library).
-Icon set – Lucide (24 px, stroke width 1.5) ; custom fill icons for status dots.
-Screenshots/mockups – placed in isometric cards with soft shadow‑1.
-Quick wins for conversion
-Sticky Upgrade banner only appears after user submits 30 free applications → targeted, non‑intrusive.
-Contrast‑rich CTA (Primary 500) always isolated—never place near another blue.
-Trust seals row (universities, YC, etc.) under hero with grey‑40 logos for subtle authority.
+## 8. Asset Guidelines
+
+*   **Logo:** Simple "JobBright" wordmark + spark icon (angled 15°) in `primary-500`.
+*   **Illustrations:** 2D line art with cobalt accents (e.g., from Blush library).
+*   **Icon Set:** Lucide icons (24px, stroke width 1.5). Custom fill icons for status dots.
+*   **Screenshots/Mockups:** Place within isometric cards using `shadow-1`.
+
+### Quick Wins for Conversion
+
+*   Display sticky "Upgrade" banner only after 30 free applications are submitted.
+*   Isolate primary CTAs (`bg-primary-500`) – avoid placing near other blue elements.
+*   Include a trust seals row (universities, partners) below the hero section using `text-grey-40` logos.

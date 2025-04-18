@@ -21,7 +21,7 @@ export function AffiliateDashboard() {
   const error = null; // Placeholder
   const { toast } = useToast();
 
-  const affiliateLink = `https://jobbright.ai/?aff=${affiliateCode}`;
+  const affiliateLink = `https://opencrew.ai/?aff=${affiliateCode}`; // Updated domain
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(affiliateLink)
