@@ -368,9 +368,40 @@ class GreenhouseAdapter(BaseAdapter):
                  except ValueError: # Catch the error raised by _fill_field if both methods fail
                       logger.info("GreenhouseAdapter: LinkedIn field not found or not visible, skipping.")
             else:
-                  logger.info("GreenhouseAdapter: LinkedIn selector not configured, skipping.")
+                      logger.info("GreenhouseAdapter: LinkedIn selector not configured, skipping.")
 
-            logger.warning("GreenhouseAdapter: Custom question/EEOC handling not implemented.")
+            # --- Placeholder for Custom Questions & EEOC ---
+            logger.info("GreenhouseAdapter: Attempting to handle custom questions/EEOC (placeholder)...")
+            # Example: Try to find common EEOC questions semantically
+            common_eeoc_labels = ["Gender", "Race", "Ethnicity", "Veteran Status", "Disability Status"]
+            for label in common_eeoc_labels:
+                # Primarily look for 'select' or radio buttons for EEOC
+                select_element = await find_element_by_semantic_label(page, label, element_type="select")
+                if select_element:
+                    logger.warning(f"GreenhouseAdapter: Found potential EEOC select field for '{label}'. Answering logic not implemented.")
+                    # TODO: Implement logic to select a default/user-provided answer (e.g., "Decline to self-identify")
+                    # Example: await select_element.select_option(label="Decline to self-identify") # Requires exact option text
+                else:
+                    # Check for radio buttons as well
+                    # Finding radio groups semantically is harder, might need specific selectors or DOM structure analysis
+                    logger.debug(f"GreenhouseAdapter: No 'select' found for EEOC label '{label}'. Radio button check not implemented.")
+
+            # Example: Try to find common work authorization questions
+            work_auth_labels = ["Work Authorization", "Sponsorship", "Authorized to work"]
+            for label in work_auth_labels:
+                 input_element = await find_element_by_semantic_label(page, label, element_type="input")
+                 if input_element:
+                     logger.warning(f"GreenhouseAdapter: Found potential work auth input field for '{label}'. Answering logic not implemented.")
+                     # TODO: Implement logic based on user profile data
+                 else:
+                     select_element = await find_element_by_semantic_label(page, label, element_type="select")
+                     if select_element:
+                         logger.warning(f"GreenhouseAdapter: Found potential work auth select field for '{label}'. Answering logic not implemented.")
+                         # TODO: Implement logic based on user profile data (e.g., select "Yes" or "No")
+
+            logger.info("GreenhouseAdapter: Finished placeholder handling for custom questions/EEOC.")
+            # --- End Placeholder ---
+
             return True
         except PlaywrightError as e:
             logger.error(f"GreenhouseAdapter: Playwright error during fill_form: {e}")
@@ -839,11 +870,11 @@ async def apply_to_job_async(db: Session, application_id: int):
 
         # --- Prepare Task Data ---
         user_profile = {
-            "first_name": user.first_name or "",
-            "last_name": user.last_name or "",
+            "first_name": user.first_name or "", # Use new field
+            "last_name": user.last_name or "",   # Use new field
             "email": user.email or "",
-            "phone": user.phone_number or "",
-            "linkedin_url": user.linkedin_url or ""
+            "phone": user.phone_number or "", # Use new field
+            "linkedin_url": user.linkedin_url or "" # Use new field
         }
         task_data = JobApplicationTask(
             application_id=application_id,

@@ -17,7 +17,11 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     # hashed_password = Column(String, nullable=False) # Removed for Auth0
     is_active = Column(Boolean, default=True)
-    full_name = Column(String, index=True, nullable=True)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    full_name = Column(String, index=True, nullable=True) # Keep for potential display/legacy use
+    phone_number = Column(String, nullable=True)
+    linkedin_url = Column(String, nullable=True)
     subscription_tier = Column(SQLEnum(SubscriptionTier), default=SubscriptionTier.FREE, nullable=False)
     current_streak = Column(Integer, default=0, nullable=False)
     last_streak_update = Column(DateTime, nullable=True, default=None) # Stores timestamp of last activity contributing to streak

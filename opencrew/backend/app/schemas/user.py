@@ -7,7 +7,11 @@ from ..models.user import SubscriptionTier # Import the enum
 class UserBase(BaseModel):
     auth0_sub: str # Added Auth0 Subject ID
     email: EmailStr
-    full_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    full_name: str | None = None # Keep for potential display/legacy use
+    phone_number: str | None = None
+    linkedin_url: str | None = None
 
 # Properties to receive via API on creation (Now likely handled by Auth0 flow, but schema might be used internally)
 class UserCreate(UserBase):
@@ -17,7 +21,11 @@ class UserCreate(UserBase):
 # Properties to receive via API on update (e.g., profile update)
 class UserUpdate(BaseModel):
     # password: str | None = None # Removed for Auth0
-    full_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    full_name: str | None = None # Keep for potential display/legacy use
+    phone_number: str | None = None
+    linkedin_url: str | None = None
     # Add other updatable fields here if needed, e.g., profile settings
     # is_active: bool | None = None # Typically admin only
     # subscription_tier: SubscriptionTier | None = None # Should admin be able to update?
