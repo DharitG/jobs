@@ -1,53 +1,76 @@
+"use client"; // Add use client directive
+
 import React from 'react';
 import { SectionHeading } from './SectionHeading';
 import { cn } from '~/lib/utils';
-import { ScrollFadeIn } from './ScrollFadeIn'; // Import animation component
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card"; // Import Card components
+import { Grid, GridPattern } from '~/components/magicui/grid-pattern'; // Import the new grid components
 
-const steps = [
-  { number: "01", title: "Create Profile", description: "Import details & set your job goals." },
-  { number: "02", title: "Run Your Search", description: "Hit 'Go' and let the auto-apply queue build." },
-  { number: "03", title: "Watch Interviews Roll In", description: "Track progress on your dashboard." },
+// Combined and expanded feature list
+const features = [
+  {
+    title: "Create Profile",
+    description: "Import details from LinkedIn & set your job goals in minutes.",
+  },
+  {
+    title: "Run Your Search",
+    description: "Hit 'Go' and let the AI build your auto-apply queue based on your criteria.",
+  },
+  {
+    title: "Track Progress",
+    description: "Watch applications send and interviews roll in on your dashboard.",
+  },
+  {
+    title: "Visa Filtering",
+    description: "Instantly filter jobs by visa requirements (OPT, CPT, H-1B, etc.).",
+  },
+  {
+    title: "AI Rewrites",
+    description: "Get GPT-4o powered resume & cover letter rewrites tailored to each job.",
+  },
+  {
+    title: "Interview Prep",
+    description: "Use AI-generated flash cards based on job descriptions to prepare.",
+  },
+  {
+    title: "Browser Extension",
+    description: "Auto-fill applications on external sites with our Chrome extension.",
+  },
+  {
+    title: "Priority Support",
+    description: "Get help quickly via community forums or priority chat (Pro/Elite).",
+  },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section className="bg-grey-5 py-16 md:py-24"> {/* Removed min-height and flex centering */}
+    // Use styling similar to FeaturesSectionDemo example
+    <section className="bg-white py-16 md:py-24"> {/* Adjusted padding */}
       <div className="container mx-auto px-4">
         <SectionHeading
-          badge="Simplicity"
-          title="Get Started in 3 Easy Steps"
+          badge="How It Works" // Updated badge
+          title="Effortless Job Searching" // Updated title
           className="mb-12 md:mb-16"
         />
 
-        {/* Grid layout for steps */}
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {steps.map((step, index) => (
-            <ScrollFadeIn key={step.number} delay={index * 0.15}>
-              <Card className="flex h-full flex-col text-center"> {/* Use Card, full height */}
-                <CardHeader>
-                  {/* Number Circle */}
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-500 text-white font-bold text-xl">
-                    {step.number}
-                  </div>
-                  {/* Step Title */}
-                  <CardTitle className="text-lg font-semibold text-grey-90">
-                    {step.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {/* Step Description */}
-                  <p className="text-sm text-grey-40">
-                    {step.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </ScrollFadeIn>
+        {/* Grid layout based on FeaturesSectionDemo */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-4 max-w-7xl mx-auto"> {/* Adjusted gap */}
+          {features.map((feature) => (
+            <div
+              key={feature.title}
+              // Apply styling from the example card
+              className="relative bg-gradient-to-b dark:from-neutral-900 from-neutral-100 dark:to-neutral-950 to-white p-6 rounded-3xl overflow-hidden border border-neutral-200 dark:border-neutral-800" // Added border
+            >
+              {/* Use the Grid component for background pattern */}
+              <Grid size={20} />
+              {/* Feature Title */}
+              <p className="text-base font-bold text-grey-90 dark:text-white relative z-20">
+                {feature.title}
+              </p>
+              {/* Feature Description */}
+              <p className="text-neutral-600 dark:text-neutral-400 mt-4 text-sm font-normal relative z-20"> {/* Adjusted text size */}
+                {feature.description}
+              </p>
+            </div>
           ))}
         </div>
       </div>

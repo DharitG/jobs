@@ -2,17 +2,15 @@
 
 "use client"; // Required for framer-motion and potentially button onClick handlers
 
-import React from 'react';
+import React from 'react'; // Keep React import
 import { Button } from '~/components/ui/button';
 import { cn } from '~/lib/utils';
 import { motion } from 'framer-motion'; // Import motion
-import { VideoModal } from './VideoModal'; // Import the modal component
+// Removed VideoModal import
+import HeroVideoDialog from '~/components/magicui/hero-video-dialog'; // Import the new component
 
 export function HeroSection() {
-  // Placeholder state and handler for modal
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  // Removed modal state and handlers
 
   const scrollToPricing = () => {
     const pricingSection = document.getElementById('pricing');
@@ -47,9 +45,7 @@ export function HeroSection() {
             <Button variant="default" size="lg" onClick={scrollToPricing}>
               Get Started Free
             </Button>
-            <Button variant="ghost" size="lg" onClick={openModal}>
-              Watch 90-sec Demo
-            </Button>
+            {/* Removed the separate "Watch Demo" button as the video dialog is clickable */}
           </div>
         </motion.div> {/* Closing tag for left column motion.div */}
 
@@ -60,32 +56,21 @@ export function HeroSection() {
           transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }} // Add slight delay
           className="flex justify-center" // This div gets wrapped
         >
-          {/* Mockup card with video */}
-          {/* Added padding p-4 to the container, reverted video classes */}
-          <div className="relative w-full max-w-[640px] aspect-[640/420] rounded-design-md shadow-1 ring-1 ring-primary-500/10 overflow-hidden p-4 bg-white dark:bg-black"> {/* Added padding and explicit background */}
-            {/* Replace with actual video source */}
-            <video
-              className="absolute inset-0 h-full w-full object-contain" // Reverted to inset-0, h/w-full, object-contain
-              src="/placeholder-pipeline-animation.mp4" // Placeholder path
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster="/placeholder-poster.jpg" // Optional poster image
-            >
-              Your browser does not support the video tag.
-            </video>
-            {/* Optional: Add a subtle overlay or play button if needed */}
-          </div>
+          {/* Replace the old video div with HeroVideoDialog */}
+          <HeroVideoDialog
+            className="w-full max-w-[640px]" // Apply max width
+            // Use placeholder paths from the old video element
+            // NOTE: The new component expects a full video URL (e.g., YouTube embed) for the modal
+            // Using the placeholder MP4 for now, but this might need adjustment for iframe usage
+            videoSrc="/placeholder-pipeline-animation.mp4" // Placeholder path for modal video
+            thumbnailSrc="/placeholder-poster.jpg" // Placeholder path for thumbnail
+            thumbnailAlt="OpenCrew Pipeline Animation"
+            animationStyle="from-center" // Example animation style
+          />
         </motion.div> {/* Closing tag for right column motion.div */}
       </div>
 
-      {/* Render Video Modal */}
-      <VideoModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        videoSrc="/placeholder-demo-video.mp4" // Replace with actual demo video path
-      />
+      {/* Removed VideoModal rendering */}
 
       {/* Optional: Add subtle SVG spark illustration absolutely positioned */}
       {/* <img src="/spark.svg" alt="" className="absolute bottom-0 right-0 w-32 h-32 opacity-50" /> */}
