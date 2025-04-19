@@ -18,3 +18,7 @@ sentence-transformers
 numpy
 stripe
 PyPDF2
+scrapy
+PyYAML
+extruct
+asyncpg

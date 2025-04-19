@@ -1,0 +1,19 @@
+# Example site configuration for job_crawler.py
+# Add your target sites here following this format:
+
+# - name: Example Company Jobs # A descriptive name for the source
+#   mode: listing # Crawl mode: 'listing', 'sitemap', or 'api'
+#   seeds:
+#     - https://jobs.example.com/careers # Starting URL(s) for the crawler
+
+# - name: Another Example API
+#   mode: api
+#   seeds:
+#     - https://api.example.com/v1/jobs
+
+# - name: Example Sitemap
+#   mode: sitemap
+#   seeds:
+#     - https://www.example.com/sitemap_jobs.xml
+
+# --- Add your actual site configurations below ---
