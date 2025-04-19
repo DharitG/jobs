@@ -40,4 +40,10 @@ import enum
 
 # # Schema to return to the client
 # class Subscription(SubscriptionInDBBase):
-#     pass 
+#     pass
+
+
+# Schema for the response of the /create-checkout-session endpoint
+class StripeCheckoutSession(BaseModel):
+    session_id: str
+    url: Optional[str] = None # The checkout URL

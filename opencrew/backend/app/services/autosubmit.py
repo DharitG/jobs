@@ -1,7 +1,10 @@
 import logging
+import logging
+from datetime import datetime # Import datetime
 from playwright.sync_api import sync_playwright, Playwright, Browser, Page, Error as PlaywrightError
+import time # For potential waits
 
-from .. import models, schemas, crud # Potentially needed later
+from .. import models, schemas, crud
 from ..db.session import SessionLocal # To get DB sessions if needed
 
 logging.basicConfig(level=logging.INFO)
@@ -49,9 +52,28 @@ def apply_to_job(db: Session, application_id: int): # Added db parameter
              return
 
         user = application.user
-        job_url = application.job.url
-        # resume_data = application.resume.content # Or parsed data if available
-        # user_profile = {"full_name": user.full_name, "email": user.email, ...}
+        job = application.job
+        resume = application.resume
+        job_url = job.url
+
+        # --- Prepare Data ---
+        # Assuming resume model has a file_path attribute pointing to the stored resume file
+        if not resume.file_path:
+             logger.error(f"Resume file path not found for resume ID: {resume.id}, application {application_id}")
+             # Optionally update status to failed/error
+             # crud.application.update_application(db, db_application=application, application_in={"status": models.ApplicationStatus.ERROR, "notes": "Resume file path missing"})
+             # db.commit()
+             return
+        resume_data = {"file_path": resume.file_path} # Pass file path for upload
+
+        # Basic user profile data (expand as needed based on form fields)
+        user_profile = {
+            "first_name": user.first_name or "", # Assuming these attributes exist on the User model
+            "last_name": user.last_name or "",
+            "email": user.email or "",
+            "phone": user.phone_number or "", # Assuming phone_number attribute
+            "linkedin_url": user.linkedin_url or "" # Assuming linkedin_url attribute
+        }
 
         # --- Check Quota ---
         remaining_quota = check_user_quota(db=db, user=user)
@@ -72,41 +94,38 @@ def apply_to_job(db: Session, application_id: int): # Added db parameter
             logger.info(f"Navigating to {job_url}...")
             
             try:
-                page.goto(job_url, wait_until='domcontentloaded', timeout=30000) # 30s timeout
+                page.goto(job_url, wait_until='domcontentloaded', timeout=60000) # Increased timeout to 60s
                 logger.info(f"Successfully navigated to {job_url}")
-                
-                # --- TODO: Add Site-Specific Application Logic --- 
-                # This is the complex part requiring site-specific selectors and actions.
-                # Example structure:
-                # if "greenhouse.io" in job_url:
-                #     _fill_greenhouse_form(page, resume_data, user_profile)
-                # elif "lever.co" in job_url:
-                #     _fill_lever_form(page, resume_data, user_profile)
-                # elif "indeed.com" in job_url: # Note: Indeed often uses iframes/complex flows
-                #     _fill_indeed_form(page, resume_data, user_profile)
-                # else:
-                #     logger.warning(f"Unsupported job board/URL for auto-apply: {job_url}")
-                #     # Update application status to indicate failure/manual required?
-                #     return
 
-                # --- Placeholder for successful submission logic --- 
-                logger.info("Placeholder: Simulating form fill and submit.")
-                page.wait_for_timeout(2000) # Simulate work
-                
-                # --- Update Application Status (Placeholder - Needs actual implementation) ---
-                # IMPORTANT: Update status to APPLIED and set applied_at upon successful submission
-                # This is crucial for the quota check to work correctly.
-                try:
-                    # Example:
-                    application.status = models.ApplicationStatus.APPLIED # Assuming this enum exists
-                    application.applied_at = datetime.utcnow()
-                    db.add(application)
-                    db.commit()
-                    logger.info(f"Successfully applied and updated status for application {application_id}.")
-                except Exception as update_e:
-                    logger.error(f"Failed to update application status for {application_id} after simulated success: {update_e}")
-                    db.rollback() # Rollback status update on error
-                    # Consider re-raising or handling differently
+                # --- Site-Specific Application Logic ---
+                applied_successfully = False
+                if "greenhouse.io" in job_url:
+                    applied_successfully = _fill_greenhouse_form(page, resume_data, user_profile)
+                elif "lever.co" in job_url:
+                    applied_successfully = _fill_lever_form(page, resume_data, user_profile)
+                elif "indeed.com" in job_url:
+                    # applied_successfully = _fill_indeed_form(page, resume_data, user_profile) # Call when implemented
+                    logger.warning(f"Indeed auto-apply not yet implemented for {job_url}")
+                else:
+                    logger.warning(f"Unsupported job board/URL for auto-apply: {job_url}")
+
+                # --- Update Application Status Based on Outcome ---
+                if applied_successfully:
+                    try:
+                        application.status = models.ApplicationStatus.APPLIED # Assuming this enum exists
+                        application.applied_at = datetime.utcnow()
+                        db.add(application)
+                        db.commit()
+                        logger.info(f"Successfully applied and updated status for application {application_id}.")
+                    except Exception as update_e:
+                        logger.error(f"Failed to update application status for {application_id} after successful apply: {update_e}")
+                        db.rollback() # Rollback status update on error
+                else:
+                    # Optionally update status to FAILED or keep as is if only unsupported
+                    logger.info(f"Auto-apply did not complete successfully for application {application_id}.")
+                    # Consider updating status to FAILED here if an attempt was made but failed
+                    # crud.application.update_application(db, db_application=application, application_in={"status": models.ApplicationStatus.ERROR, "notes": "Auto-apply failed or unsupported"})
+                    # db.commit()
 
             except PlaywrightError as e:
                 logger.error(f"Playwright error during auto-apply for application {application_id} ({job_url}): {e}")
@@ -138,17 +157,125 @@ def apply_to_job(db: Session, application_id: int): # Added db parameter
     # Final log message moved inside the try block's finally or after specific outcomes
     # logger.info(f"Finished auto-apply attempt for application ID: {application_id}")
 
-# --- Helper functions for specific job boards (to be implemented) --- 
+# --- Helper functions for specific job boards (to be implemented) ---
 
-def _fill_greenhouse_form(page: Page, resume_data: dict, user_profile: dict):
+def _fill_greenhouse_form(page: Page, resume_data: dict, user_profile: dict) -> bool:
+    """Attempts to fill a standard Greenhouse application form. Returns True on success, False on failure."""
     logger.info("Attempting to fill Greenhouse form...")
-    # TODO: Implement selectors and filling logic for Greenhouse
-    raise NotImplementedError("Greenhouse form filling not implemented.")
+    try:
+        # --- Common Greenhouse Fields (Selectors are assumptions - VERIFY ON LIVE PAGES) ---
+        logger.info("Filling basic info...")
+        # Use specific IDs if available, otherwise rely on labels/names (less robust)
+        page.locator('input[id*="first_name"]').fill(user_profile.get("first_name", ""))
+        page.locator('input[id*="last_name"]').fill(user_profile.get("last_name", ""))
+        page.locator('input[id*="email"]').fill(user_profile.get("email", ""))
+        page.locator('input[id*="phone"]').fill(user_profile.get("phone", ""))
 
-def _fill_lever_form(page: Page, resume_data: dict, user_profile: dict):
+        # Resume Upload - Often has an input type="file" associated with a button/label
+        # This selector looks for a button/label containing "Resume" and finds the associated file input
+        logger.info(f"Uploading resume from: {resume_data.get('file_path')}")
+        resume_input_selector = 'label:has-text("Resume") >> input[type="file"], button:has-text("Resume") >> input[type="file"], input[id*="resume"][type="file"]'
+        page.locator(resume_input_selector).set_input_files(resume_data.get("file_path"))
+
+        # LinkedIn URL (Optional field usually)
+        linkedin_selector = 'input[name*="linkedin"]' # Common pattern
+        if page.locator(linkedin_selector).is_visible():
+             logger.info("Filling LinkedIn URL...")
+             page.locator(linkedin_selector).fill(user_profile.get("linkedin_url", ""))
+
+        # --- TODO: Handle Custom Questions ---
+        # This is highly variable. Might need to loop through questions, identify types (text, dropdown, radio), and attempt to answer.
+        # For now, just log a warning.
+        logger.warning("Custom question handling not implemented for Greenhouse.")
+
+        # --- TODO: Handle EEOC/Diversity Questions ---
+        # These often appear at the end. Need strategies to select "Decline to self-identify" or similar.
+        logger.warning("EEOC/Diversity question handling not implemented.")
+
+        # --- Submission ---
+        submit_button_selector = 'button[type="submit"]:has-text("Submit Application")'
+        logger.info("Attempting to submit application...")
+        page.locator(submit_button_selector).click() # Clicking submit
+
+        # --- Verification Step ---
+        # Wait for either a success message or a known failure indicator
+        # Adjust selectors/text based on actual Greenhouse confirmation pages
+        success_selector = 'text=/Application Submitted|Thank you/i' # Regex for common success text (case-insensitive)
+        try:
+             page.wait_for_selector(success_selector, timeout=15000) # Wait 15 seconds for confirmation
+             logger.info("Greenhouse submission successful (confirmation text found).")
+             return True
+        except PlaywrightError:
+             logger.warning("Greenhouse submission confirmation text not found within timeout.")
+             # Add checks for known error messages if possible here
+             return False
+
+    except PlaywrightError as e:
+        logger.error(f"Playwright error filling Greenhouse form: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error filling Greenhouse form: {e}")
+        return False
+
+def _fill_lever_form(page: Page, resume_data: dict, user_profile: dict) -> bool:
+    """Attempts to fill a standard Lever application form. Returns True on success, False on failure."""
     logger.info("Attempting to fill Lever form...")
-    # TODO: Implement selectors and filling logic for Lever
-    raise NotImplementedError("Lever form filling not implemented.")
+    try:
+        # --- Common Lever Fields (Selectors are assumptions - VERIFY ON LIVE PAGES) ---
+        logger.info("Filling basic info...")
+        # Lever often uses name attributes like 'name', 'email', 'phone', 'urls[LinkedIn]'
+        page.locator('input[name="name"]').fill(f"{user_profile.get('first_name', '')} {user_profile.get('last_name', '')}")
+        page.locator('input[name="email"]').fill(user_profile.get("email", ""))
+        page.locator('input[name="phone"]').fill(user_profile.get("phone", ""))
+
+        # Resume Upload - Look for input type="file" often named 'resume'
+        logger.info(f"Uploading resume from: {resume_data.get('file_path')}")
+        resume_input_selector = 'input[type="file"][name="resume"]'
+        # Wait for the element to be visible and enabled before interacting
+        page.locator(resume_input_selector).wait_for(state="visible", timeout=10000)
+        page.locator(resume_input_selector).set_input_files(resume_data.get("file_path"))
+        # Add a small wait after upload if needed for processing
+        page.wait_for_timeout(1000)
+
+        # LinkedIn URL
+        linkedin_selector = 'input[name="urls[LinkedIn]"]'
+        if page.locator(linkedin_selector).is_visible():
+            logger.info("Filling LinkedIn URL...")
+            page.locator(linkedin_selector).fill(user_profile.get("linkedin_url", ""))
+
+        # --- TODO: Handle Custom Questions ---
+        # Lever custom questions often appear within fieldsets or specific divs.
+        logger.warning("Custom question handling not implemented for Lever.")
+
+        # --- TODO: Handle EEOC/Diversity Questions ---
+        # Similar to Greenhouse, often at the end.
+        logger.warning("EEOC/Diversity question handling not implemented.")
+
+        # --- Submission ---
+        # Lever submit buttons often have text like "Submit Application" or similar
+        submit_button_selector = 'button[type="submit"]' # May need refinement based on text like ':has-text("Submit Application")'
+        logger.info("Attempting to submit application...")
+        page.locator(submit_button_selector).click() # Clicking submit
+
+        # --- Verification Step ---
+        # Wait for either a success message or a known failure indicator
+        # Adjust selectors/text based on actual Lever confirmation pages
+        success_selector = 'text=/Application submitted|Your application has been received/i' # Regex for common success text
+        try:
+             page.wait_for_selector(success_selector, timeout=15000) # Wait 15 seconds for confirmation
+             logger.info("Lever submission successful (confirmation text found).")
+             return True
+        except PlaywrightError:
+             logger.warning("Lever submission confirmation text not found within timeout.")
+             # Add checks for known error messages if possible here
+             return False
+
+    except PlaywrightError as e:
+        logger.error(f"Playwright error filling Lever form: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error filling Lever form: {e}")
+        return False
 
 def _fill_indeed_form(page: Page, resume_data: dict, user_profile: dict):
     logger.info("Attempting to fill Indeed form...")

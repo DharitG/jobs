@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Add other settings as needed (e.g., Stripe keys, external API keys)
     STRIPE_SECRET_KEY: str | None = os.getenv("STRIPE_SECRET_KEY")
     STRIPE_PUBLISHABLE_KEY: str | None = os.getenv("STRIPE_PUBLISHABLE_KEY")
+    STRIPE_WEBHOOK_SECRET: str | None = os.getenv("STRIPE_WEBHOOK_SECRET")
 
     # Celery / Redis
     CELERY_BROKER_URL: str = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
@@ -29,4 +30,4 @@ class Settings(BaseSettings):
         case_sensitive = True
         env_file = ".env"
 
-settings = Settings() 
+settings = Settings()

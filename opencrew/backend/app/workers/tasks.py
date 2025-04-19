@@ -11,16 +11,20 @@ logger = logging.getLogger(__name__)
 def trigger_auto_apply(application_id: int):
     """Celery task to trigger the auto-application process for a given application ID."""
     logger.info(f"Received task trigger_auto_apply for application_id: {application_id}")
+    db = SessionLocal()
     try:
-        # Call the actual auto-submit function from the service
-        autosubmit.apply_to_job(application_id=application_id)
+        # Call the actual auto-submit function from the service, passing the DB session
+        autosubmit.apply_to_job(db=db, application_id=application_id)
         logger.info(f"Successfully processed task trigger_auto_apply for application_id: {application_id}")
         # The result/status update should happen within apply_to_job or via another mechanism
     except Exception as e:
         # Log the error; Celery can handle retries based on configuration if needed
+        db.rollback() # Rollback in case of error during apply_to_job DB operations
         logger.error(f"Error processing task trigger_auto_apply for application_id: {application_id}. Error: {e}", exc_info=True)
         # Depending on retry policy, this might raise the exception to trigger a retry
         raise
+    finally:
+        db.close() # Ensure the session is closed
 
 # Add other tasks here later, e.g.:
 # @celery_app.task(name="tasks.send_email")

@@ -147,9 +147,9 @@ Based on `vision.md`.
 *   ✅ Implement Application CRUD operations (`crud/application.py`)
 *   ✅ Implement Application API endpoints (`api/applications.py` - includes GET, POST, PUT, DELETE)
 *   ✅ Implement backend logic for Application Pipeline state (Handled by `PUT /applications/{application_id}`)
-*   ⬜ Implement Auto-apply service (`services/autosubmit.py`)
+*   🚧 Implement Auto-apply service (`services/autosubmit.py`) (Basic Greenhouse & Lever adapters added with submit click & basic verification)
     *   🚧 Setup Playwright/browser automation (Initial structure created)
-    *   ✅ Implement background task queuing (`workers/tasks.py` - Celery app and tasks for auto-apply and scraping defined)
+    *   ✅ Implement background task queuing (`workers/tasks.py` - Celery app and tasks for auto-apply and scraping defined) (DB session handling in worker task fixed)
     *   ✅ Implement rate limiting/quota logic for free tier (50/mo) (`check_user_quota` implemented and integrated into `apply_to_job`)
 
 ### Database
@@ -201,7 +201,7 @@ Based on `vision.md`.
 *   🚧 Implement VisaPulse In-app Lawyer Chat (UI + Backend/Integration) (UI button disabled, blocked by backend/plan logic)
 *   🚧 Implement Mock Interview Scheduling Feature (UI + Backend) (UI component `MockInterviewScheduler.tsx` created, blocked by backend/tRPC)
 *   🚧 Implement Slack Alerts Feature (Backend Integration) (UI component `SlackAlertSettings.tsx` created, blocked by backend/tRPC)
-*   ⬜ Implement Stripe integration for Pro subscriptions (`models/payment.py`, `schemas/payment.py`, `api/subs.py`, tRPC `subscription` router)
+*   🚧 Implement Stripe integration for Pro subscriptions (`models/payment.py`, `schemas/payment.py`, `api/subs.py`, tRPC `subscription` router) (API structure/placeholders added)
 *   🚧 Implement Paywall / Upgrade prompts in UI (`pages/pricing.tsx`) (UI complete, checkout button calls placeholder, blocked by backend Stripe/tRPC)
 
 ### Elite Tier ($99/mo)
@@ -210,7 +210,7 @@ Based on `vision.md`.
 *   ⬜ Implement Custom Domain Email Alias Feature (Backend Service)
 *   ⬜ Implement Auto-apply Throttling Heuristics (Backend logic in `services/autosubmit.py`)
 *   ⬜ Implement "Warm Intro Finder" (Graph Search across external data) (Backend Service)
-*   ⬜ Implement Stripe integration for Elite subscriptions
+*   🚧 Implement Stripe integration for Elite subscriptions (API structure/placeholders added, shares endpoints with Pro)
 *   🚧 Implement Annual Billing option / Discount logic (UI toggle updated with placeholder saving %, blocked by backend/Stripe data)
 
 ### Revenue Accelerators
@@ -288,10 +288,10 @@ This section outlines the remaining major tasks required to bring JobBright to f
 
 ### Backend Development (Completion)
 *   🚧 **Scraping:** Fully implement and test Indeed (Playwright), Greenhouse (API), and Lever (API) adapters in `services/scraping.py`. Implement ToS checks/fallbacks. Needs robust testing and potentially scheduling (e.g., Celery Beat).
-*   ⬜ **Auto-Apply:** Complete Playwright automation logic in `services/autosubmit.py` (robust handling of different ATS flows, error handling, CAPTCHA detection/mitigation strategy). Implement randomized intervals/human-like interaction. Ensure robust Celery task queueing and error handling (`workers/tasks.py`). Implement unlimited auto-apply logic for Pro tier (remove quota checks). Implement throttling heuristics for Elite tier.
+*   🚧 **Auto-Apply:** Complete Playwright automation logic in `services/autosubmit.py` (Basic Greenhouse & Lever adapters added with submit click & basic verification; needs Indeed, custom questions, EEOC, robust verification, error handling, CAPTCHA strategy). Implement randomized intervals/human-like interaction. Ensure robust Celery task queueing and error handling (`workers/tasks.py`). Implement unlimited auto-apply logic for Pro tier (remove quota checks). Implement throttling heuristics for Elite tier.
 *   ✅ **Application Tracking:** Implement backend logic for managing Application Pipeline states (Handled by `PUT /applications/{application_id}` endpoint in `api/applications.py`).
 *   ⬜ **RBAC:** Implement Role-Based Access Control using Auth0 roles/permissions, protecting relevant API endpoints.
-*   ⬜ **Stripe Integration:** Fully implement Stripe subscription creation, status checking, webhook handling (`api/subs.py`, `models/payment.py`, `schemas/payment.py`). Handle Pro, Elite, and Annual billing logic.
+*   🚧 **Stripe Integration:** Fully implement Stripe subscription creation, status checking, webhook handling (`api/subs.py`, `models/payment.py`, `schemas/payment.py`). Handle Pro, Elite, and Annual billing logic. (API structure/placeholders added)
 *   ⬜ **GPT-4o Integrations:**
     *   ⬜ Implement backend service logic for Resume & Cover Letter rewriting.
     *   ⬜ Implement backend service logic for Interview Flash-Cards Q&A generation.
