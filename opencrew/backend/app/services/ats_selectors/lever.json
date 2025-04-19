@@ -1,0 +1,12 @@
+{
+  "selectors": {
+    "full_name": "input[name='name']",
+    "email": "input[name='email']",
+    "phone": "input[name='phone']",
+    "resume_upload_input": "input[type='file'][name='resume']",
+    "linkedin_url": "input[name='urls[LinkedIn]']",
+    "submit_button": "button[type='submit']:has-text('Submit Application'), button[data-qa='btn-submit']",
+    "success_message": "text=/Application submitted|Your application has been received/i"
+  },
+  "notes": "Selectors based on common Lever patterns. May need adjustments for specific boards."
+}

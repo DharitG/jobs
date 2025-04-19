@@ -1,4 +1,5 @@
 import logging
+import asyncio # Import asyncio
 from typing import List
 
 from .celery_app import celery_app # Import the configured Celery app
@@ -14,18 +15,24 @@ def trigger_auto_apply(application_id: int):
     logger.info(f"Received task trigger_auto_apply for application_id: {application_id}")
     db = SessionLocal()
     try:
-        # Call the actual auto-submit function from the service, passing the DB session
-        autosubmit.apply_to_job(db=db, application_id=application_id)
-        logger.info(f"Successfully processed task trigger_auto_apply for application_id: {application_id}")
-        # The result/status update should happen within apply_to_job or via another mechanism
+        # Call the new async auto-submit function using asyncio.run()
+        asyncio.run(autosubmit.apply_to_job_async(db=db, application_id=application_id))
+        # Logging and status updates are now handled within apply_to_job_async
+        logger.info(f"Finished processing task trigger_auto_apply for application_id: {application_id}")
     except Exception as e:
         # Log the error; Celery can handle retries based on configuration if needed
-        db.rollback() # Rollback in case of error during apply_to_job DB operations
+        # Rollback might be redundant if apply_to_job_async handles its own errors/rollbacks,
+        # but keep it here as a safety net for unexpected exceptions before/after the async call.
+        try:
+            db.rollback()
+        except Exception as rb_exc:
+            logger.error(f"Error during rollback attempt for application_id {application_id}: {rb_exc}")
+
         logger.error(f"Error processing task trigger_auto_apply for application_id: {application_id}. Error: {e}", exc_info=True)
         # Depending on retry policy, this might raise the exception to trigger a retry
         raise
     finally:
-        db.close() # Ensure the session is closed
+        db.close() # Ensure the session is always closed
 
 # Add other tasks here later, e.g.:
 # @celery_app.task(name="tasks.send_email")

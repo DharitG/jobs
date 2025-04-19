@@ -13,6 +13,7 @@ httpx # Added for async requests in Auth0 validation
 requests
 beautifulsoup4
 playwright
+playwright-stealth # Added for stealth browser automation
 qdrant-client
 sentence-transformers
 numpy

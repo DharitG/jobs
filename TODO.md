@@ -147,10 +147,23 @@ Based on `vision.md`.
 *   ✅ Implement Application CRUD operations (`crud/application.py`)
 *   ✅ Implement Application API endpoints (`api/applications.py` - includes GET, POST, PUT, DELETE)
 *   ✅ Implement backend logic for Application Pipeline state (Handled by `PUT /applications/{application_id}`)
-*   🚧 Implement Auto-apply service (`services/autosubmit.py`) (Basic Greenhouse & Lever adapters added with submit click & basic verification)
-    *   🚧 Setup Playwright/browser automation (Initial structure created)
-    *   ✅ Implement background task queuing (`workers/tasks.py` - Celery app and tasks for auto-apply and scraping defined) (DB session handling in worker task fixed)
-    *   ✅ Implement rate limiting/quota logic for free tier (50/mo) (`check_user_quota` implemented and integrated into `apply_to_job`)
+*   🚧 Implement Auto-apply service (`services/autosubmit.py`) - **Blueprint Implementation**
+    *   ✅ **Foundation & State Machine:** Refactor to `asyncio`, `async_playwright`, `AutoSubmitter` class, state machine logic (`TaskResult`). (`services/autosubmit.py`)
+    *   ✅ **Base Adapters & Detection:** Define `BaseAdapter`, `GreenhouseAdapter`, `LeverAdapter`, `IndeedAdapter`, `WorkdayAdapter` placeholders. Update `detect_site` for Indeed/Workday URLs. (`services/autosubmit.py`)
+    *   ✅ **Playwright Stealth:** Integrate `playwright-stealth`. (`services/autosubmit.py`, `requirements.txt`)
+    *   ✅ **Celery Integration:** Update worker task `trigger_auto_apply` to call async function. (`workers/tasks.py`)
+    *   ✅ **Quota Logic:** Retain existing `check_user_quota` function, refine logging. (`services/autosubmit.py`)
+    *   ✅ **Adapter Pattern (Static Maps):** Create JSON selector files (`ats_selectors/`). Load selectors in `BaseAdapter`. (`services/autosubmit.py`, `ats_selectors/`)
+    *   ✅ **Adapter Pattern (Dynamic Heuristics):** Implement `find_element_by_semantic_label` helper. Integrate into `_fill_field` method in adapters. Refine label finding heuristics. (`services/autosubmit.py`)
+    *   ⬜ **Adapter Pattern (Form Policy):** Implement handling for site-specific quirks (EEOC modals, file uploads, scrolling). Needs site-specific examples.
+    *   ✅ **Human Emulation:** Enhance `_apply_stealth_humanization` with randomized delays, scrolling, mouse movement. Add placeholders for proxy rotation and context options. (`services/autosubmit.py`)
+    *   🚧 **CAPTCHA Strategy (Tier 2 - Auto-solve):** Implement `CaptchaGate.solve` using services like 2Captcha/Anti-Captcha. Requires external service integration.
+    *   ⬜ **CAPTCHA Strategy (Tier 3 - AI-solve):** Implement OCR/simple math solving for basic CAPTCHAs. Requires additional libraries/setup.
+    *   ⬜ **CAPTCHA Strategy (Tier 4 - Human-loop):** Implement escalation to a human review queue. Requires external service/tooling.
+    *   ✅ **Submission Verification:** Enhance `verify` methods to check for common error patterns in addition to success messages. (`services/autosubmit.py`)
+    *   ✅ **Error Telemetry & Artifacts:** Add artifact capture (HTML, screenshot) on failure. Add placeholders for Prometheus/OpenTelemetry integration. (`services/autosubmit.py`)
+    *   ⬜ **Self-Healing & Testing:** Implement nightly synthetic runs, golden-path tests in CI. Requires CI setup.
+    *   ✅ **Pro/Elite Tier Logic:** Implement unlimited quota logic (Pro) and placeholder throttling heuristics (Elite). (`services/autosubmit.py`)
 
 ### Database
 *   ✅ Setup Alembic for migrations (Manual setup)
@@ -288,7 +301,14 @@ This section outlines the remaining major tasks required to bring JobBright to f
 
 ### Backend Development (Completion)
 *   🚧 **Scraping:** Fully implement and test Indeed (Playwright), Greenhouse (API), and Lever (API) adapters in `services/scraping.py`. Implement ToS checks/fallbacks. Needs robust testing and potentially scheduling (e.g., Celery Beat).
-*   🚧 **Auto-Apply:** Complete Playwright automation logic in `services/autosubmit.py` (Basic Greenhouse & Lever adapters added with submit click & basic verification; needs Indeed, custom questions, EEOC, robust verification, error handling, CAPTCHA strategy). Implement randomized intervals/human-like interaction. Ensure robust Celery task queueing and error handling (`workers/tasks.py`). Implement unlimited auto-apply logic for Pro tier (remove quota checks). Implement throttling heuristics for Elite tier.
+*   🚧 **Auto-Apply (`services/autosubmit.py` - Blueprint Completion):**
+    *   ✅ Foundational structure, async, stealth, base adapters (GH, LV, IN, WD), static selectors, semantic fallback, enhanced humanization, improved verification, telemetry placeholders, Pro/Elite quota/throttling placeholders.
+    *   ⬜ Complete implementation for Greenhouse, Lever, Indeed, Workday adapters (custom questions, EEOC, specific form policies).
+    *   ⬜ Implement full human emulation (fingerprinting, header rotation, proxies).
+    *   ⬜ Implement full CAPTCHA solving funnel (Auto-solve, AI-solve, Human-loop).
+    *   ⬜ Implement advanced submission verification (network hooks, email watch).
+    *   ⬜ Implement full error telemetry (Prometheus, OpenTelemetry) and artifact storage (e.g., S3).
+    *   ⬜ Implement self-healing/testing mechanisms (synthetic runs, CI tests).
 *   ✅ **Application Tracking:** Implement backend logic for managing Application Pipeline states (Handled by `PUT /applications/{application_id}` endpoint in `api/applications.py`).
 *   ⬜ **RBAC:** Implement Role-Based Access Control using Auth0 roles/permissions, protecting relevant API endpoints.
 *   🚧 **Stripe Integration:** Fully implement Stripe subscription creation, status checking, webhook handling (`api/subs.py`, `models/payment.py`, `schemas/payment.py`). Handle Pro, Elite, and Annual billing logic. (API structure/placeholders added)
