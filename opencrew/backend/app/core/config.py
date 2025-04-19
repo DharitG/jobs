@@ -10,8 +10,12 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "a_very_secret_key_that_should_be_changed")
-    ALGORITHM: str = "HS256"
+    ALGORITHM: str = "HS256" # Note: Auth0 typically uses RS256, this might be unused or for other purposes
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30 # Example: 30 minutes
+
+    # Auth0
+    AUTH0_DOMAIN: str = os.getenv("AUTH0_DOMAIN", "")
+    AUTH0_API_AUDIENCE: str = os.getenv("AUTH0_API_AUDIENCE", "")
 
     # Add other settings as needed (e.g., Stripe keys, external API keys)
     STRIPE_SECRET_KEY: str | None = os.getenv("STRIPE_SECRET_KEY")

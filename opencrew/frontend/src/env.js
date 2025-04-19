@@ -8,6 +8,12 @@ export const env = createEnv({
    */
   server: {
     NODE_ENV: z.enum(["development", "test", "production"]),
+    // Auth0 server-side variables required by nextjs-auth0
+    AUTH0_SECRET: z.string().min(1),
+    AUTH0_BASE_URL: z.string().url(),
+    AUTH0_ISSUER_BASE_URL: z.string().url(),
+    AUTH0_CLIENT_ID: z.string().min(1),
+    AUTH0_CLIENT_SECRET: z.string().min(1),
   },
 
   /**
@@ -19,9 +25,9 @@ export const env = createEnv({
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_BACKEND_API_URL: z.string().url(),
     NEXT_PUBLIC_AUTH0_DOMAIN: z.string().min(1),
-    NEXT_PUBLIC_AUTH0_AUDIENCE: z.string().min(1),
-    // We might also need the Client ID later for client-side Auth0Provider
-    NEXT_PUBLIC_AUTH0_CLIENT_ID: z.string().min(1), 
+    // NEXT_PUBLIC_AUTH0_AUDIENCE: z.string().min(1), // Audience is typically backend-only
+    // We need the Client ID for the client-side Auth0Provider
+    NEXT_PUBLIC_AUTH0_CLIENT_ID: z.string().min(1),
   },
 
   /**
@@ -30,10 +36,17 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
+    // Server-side Auth0
+    AUTH0_SECRET: process.env.AUTH0_SECRET,
+    AUTH0_BASE_URL: process.env.AUTH0_BASE_URL,
+    AUTH0_ISSUER_BASE_URL: process.env.AUTH0_ISSUER_BASE_URL,
+    AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
+    AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
+    // Client-side vars
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
     NEXT_PUBLIC_BACKEND_API_URL: process.env.NEXT_PUBLIC_BACKEND_API_URL,
     NEXT_PUBLIC_AUTH0_DOMAIN: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
-    NEXT_PUBLIC_AUTH0_AUDIENCE: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE,
+    // NEXT_PUBLIC_AUTH0_AUDIENCE: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE, // Removed
     NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
   },
   /**
