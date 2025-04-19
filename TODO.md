@@ -279,3 +279,66 @@ Based on `vision.md`.
     *   ⬜ Other components (e.g., `ProfileImport`, `ResumeEditModal`, etc.)
     *   ⬜ Hooks (e.g., `use-toast`)
 *   ⬜ Write end-to-end tests for critical user flows
+
+---
+
+## Phase 2: Path to 100% Completion
+
+This section outlines the remaining major tasks required to bring JobBright to full feature completion based on the initial vision and current state.
+
+### Backend Development (Completion)
+*   ⬜ **Scraping:** Fully implement and test Indeed, Greenhouse, and Lever adapters in `services/scraping.py`. Implement ToS checks/fallbacks.
+*   ⬜ **Auto-Apply:** Complete Playwright automation logic in `services/autosubmit.py` (robust handling of different ATS flows, error handling, CAPTCHA detection/mitigation strategy). Implement randomized intervals/human-like interaction. Ensure robust Celery task queueing and error handling (`workers/tasks.py`). Implement unlimited auto-apply logic for Pro tier (remove quota checks). Implement throttling heuristics for Elite tier.
+*   ⬜ **Application Tracking:** Implement backend logic for managing Application Pipeline states (e.g., Applied, Interviewing, Offer, Rejected).
+*   ⬜ **RBAC:** Implement Role-Based Access Control using Auth0 roles/permissions, protecting relevant API endpoints.
+*   ⬜ **Stripe Integration:** Fully implement Stripe subscription creation, status checking, webhook handling (`api/subs.py`, `models/payment.py`, `schemas/payment.py`). Handle Pro, Elite, and Annual billing logic.
+*   ⬜ **GPT-4o Integrations:**
+    *   ⬜ Implement backend service logic for Resume & Cover Letter rewriting.
+    *   ⬜ Implement backend service logic for Interview Flash-Cards Q&A generation.
+*   ⬜ **Slack Alerts:** Implement backend integration for sending Slack notifications based on user settings.
+*   ⬜ **VisaPulse Lawyer Chat:** Implement backend logic/integration for connecting users with lawyers (if applicable based on final plan).
+*   ⬜ **Mock Interviews:** Implement backend logic for scheduling and potentially facilitating mock interviews.
+*   ⬜ **Success Coach:** Implement backend logic for assigning/managing success coaches and communication.
+*   ⬜ **Resume Review:** Implement backend workflow for managing guaranteed 24-hour resume review submissions and feedback delivery.
+*   ⬜ **Email Alias:** Implement backend service for creating/managing custom domain email aliases (Elite tier).
+*   ⬜ **Warm Intro Finder:** Develop and implement the backend service for graph search/finding warm intros.
+*   ⬜ **Referral System:** Implement backend logic for tracking referrals and applying credits.
+*   ⬜ **Risk Reversal:** Implement backend logic for tracking/managing any risk-reversal offers.
+*   ⬜ **Audit Logging:** Implement basic audit logging for critical actions (`services/audit.py`?).
+*   ⬜ **Compliance:** Implement GDPR/CCPA data deletion endpoint and logic. Encrypt PII at rest (verify DB config).
+*   ⬜ **Testing:** Write comprehensive Pytest unit tests for all core services, CRUD operations, and API endpoints. Write integration tests covering key user flows.
+
+### Frontend Development (Completion)
+*   ⬜ **Backend Integration:** Connect all remaining UI components to their corresponding backend tRPC procedures/API endpoints:
+    *   ⬜ Daily Streak (`DailyStreak.tsx`)
+    *   ⬜ VisaPulse details/history (`VisaPulse.tsx`)
+    *   ⬜ GPT Resume Edits (`ResumeEditModal.tsx`)
+    *   ⬜ GPT Resume/Cover Letter Rewriting features
+    *   ⬜ Interview Flashcards (`InterviewFlashCard.tsx`)
+    *   ⬜ Priority Support Chat Bot integration (`SupportChatTrigger.tsx`)
+    *   ⬜ VisaPulse Lawyer Chat UI (`VisaPulse.tsx` button action)
+    *   ⬜ Mock Interview Scheduling UI (`MockInterviewScheduler.tsx`)
+    *   ⬜ Slack Alerts Settings UI (`SlackAlertSettings.tsx`)
+    *   ⬜ Personal Success Coach UI (`SuccessCoachSection.tsx`)
+    *   ⬜ Resume Review Submission UI (`ResumeReviewSubmit.tsx`)
+    *   ⬜ Referral System UI (`ReferralSection.tsx`)
+    *   ⬜ Mini-milestones/Badges (`MilestoneBadge.tsx` - connect to backend triggers)
+    *   ⬜ Affiliate Dashboard (`AffiliateDashboard.tsx`)
+*   ⬜ **Stripe Integration:** Implement full Stripe checkout flow (`pages/pricing.tsx`), subscription management UI (e.g., in user settings), and connect annual billing toggle.
+*   ⬜ **Paywalls & Feature Gating:** Implement UI logic to show/hide features or display upgrade prompts based on user's subscription status fetched from the backend.
+*   ⬜ **Browser Extension:** Develop the browser extension for ATS auto-fill (`Assisted Application`).
+*   ⬜ **Error Handling & Loading States:** Implement robust loading indicators and user-friendly error messages for all data fetching and mutations.
+*   ⬜ **Testing:** Complete unit tests for remaining components and hooks. Write end-to-end tests (e.g., using Cypress or Playwright) for critical user flows (signup, login, applying, upgrading).
+
+### Infrastructure & Operations (Completion)
+*   ⬜ **CI/CD Pipeline:** Configure GitHub Actions (or similar) to automatically build, test, and deploy frontend, backend API, and worker services to Render on pushes/merges to the main branch. Include automated database migrations (`alembic upgrade head`).
+*   ⬜ **Managed Services:** Confirm final configuration and scaling plans for managed Postgres, Redis, and Qdrant on Render (or chosen provider).
+*   ⬜ **Observability:** Integrate and configure monitoring (e.g., Prometheus/Grafana via Render metrics), logging aggregation (e.g., Logflare, Datadog), and error tracking (e.g., Sentry).
+*   ⬜ **Security Hardening:** Perform dependency vulnerability scans, review secrets management practices, implement robust rate limiting on public API endpoints, configure firewalls.
+*   ⬜ **Security Audit:** Conduct a security audit before full public launch.
+
+### Manual & Other Tasks (Completion)
+*   ⬜ Register `jobbright.ai` domain.
+*   ⬜ Create wait-list page (if needed before full launch).
+*   ⬜ Conduct international-student focus calls for feedback.
+*   ⬜ Draft and finalize Privacy Policy & Terms of Service.
