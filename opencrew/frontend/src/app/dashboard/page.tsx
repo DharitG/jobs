@@ -2,11 +2,12 @@
 
 import React from 'react';
 // import { ProgressMeter } from '~/components/ProgressMeter'; // No longer needed here
-import { PipelineBoard } from '~/components/PipelineBoard'; // Import the board
-import { DailyStreak } from '~/components/DailyStreak'; // Import DailyStreak
-import { VisaPulse } from '~/components/VisaPulse'; // Import VisaPulse
-import { api } from '~/trpc/react'; // Import tRPC client hook
-import { Skeleton } from '~/components/ui/skeleton'; // Import Skeleton
+import { PipelineBoard } from '~/components/PipelineBoard';
+import { DailyStreak } from '~/components/DailyStreak';
+import { VisaPulse } from '~/components/VisaPulse';
+import { JobCard } from '~/components/JobCard'; // Import JobCard
+import { api } from '~/trpc/react';
+import { Skeleton } from '~/components/ui/skeleton';
 
 // Define ApplicationStage type (consider moving to a shared types file)
 type ApplicationStage = 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Rejected';
@@ -26,10 +27,14 @@ interface ApiApplicationItem {
 export default function DashboardPage() {
 
   // Fetch applications using tRPC
-  const { data: applications, isLoading, error } = api.application.list.useQuery(); // ASSUMING this procedure exists
+  const { data: applications, isLoading: isLoadingApplications, error: errorApplications } = api.application.list.useQuery();
 
-  // --- Loading State --- 
-  if (isLoading) {
+  // Fetch matched jobs using tRPC
+  // Pass an empty object {} as input to satisfy the procedure definition, even if fields are optional
+  const { data: matchedJobs, isLoading: isLoadingJobs, error: errorJobs } = api.job.getMatchedJobs.useQuery({});
+
+  // --- Combined Loading State ---
+  if (isLoadingApplications || isLoadingJobs) {
     // Render skeleton loader matching the board structure
     return (
       <div className="px-4 py-8 h-screen flex flex-col">
@@ -69,17 +74,18 @@ export default function DashboardPage() {
     );
   }
 
-  // --- Error State --- 
-  if (error) {
+  // --- Combined Error State ---
+  if (errorApplications || errorJobs) {
     return (
-      <div className="px-4 py-8 h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-6 text-error">Application Pipeline</h1>
-        <p className="text-error">Failed to load applications: {error.message}</p>
+      <div className="px-4 py-8 h-screen flex flex-col items-center justify-center text-center">
+        <h1 className="text-3xl font-bold mb-6 text-error font-display">Dashboard Error</h1>
+        {errorApplications && <p className="text-error mb-2">Failed to load applications: {errorApplications.message}</p>}
+        {errorJobs && <p className="text-error">Failed to load matched jobs: {errorJobs.message}</p>}
       </div>
     );
   }
 
-  // --- Success State --- 
+  // --- Success State ---
   // Filter out rejected applications for the main board display
   // Ensure the fetched data conforms to ApiApplicationItem structure before filtering
   const activeApplications = (applications || []).filter(
@@ -112,6 +118,34 @@ export default function DashboardPage() {
            
            {/* VisaPulse Component */}
            <VisaPulse historyLimitDays={visaPulseHistoryLimit} />
+
+           {/* Matched Jobs Section */}
+           <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-grey-90">Matched Jobs</h3>
+              {isLoadingJobs ? ( // Show skeletons if jobs are still loading (though main loading handles this)
+                 <>
+                    <Skeleton className="h-24 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                 </>
+              ) : errorJobs ? (
+                 <p className="text-sm text-error">Could not load matched jobs.</p>
+              ) : matchedJobs && matchedJobs.length > 0 ? (
+                 matchedJobs.map((job) => (
+                    <JobCard
+                       key={job.id}
+                       id={job.id}
+                       jobTitle={job.title}
+                       companyName={job.company}
+                       location={job.location}
+                       ctaLink={job.url} // Use job URL for the card's main link/button
+                       // logoUrl={job.logoUrl} // Add if available in schema/data
+                    />
+                 ))
+              ) : (
+                 <p className="text-sm text-grey-60">No matched jobs found yet. Ensure your resume is uploaded!</p>
+              )}
+           </div>
 
            {/* Add other sidebar components here later (e.g., QuotaRing) */}
         </aside>

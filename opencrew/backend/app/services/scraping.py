@@ -1,10 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlencode
 from datetime import datetime, timedelta
-# from playwright.sync_api import sync_playwright # If needed for JS-heavy sites
-from typing import List
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+import time # For potential delays
+from typing import List, Optional
 
 from .. import schemas
 
@@ -31,98 +32,143 @@ def parse_relative_date(date_str: str) -> datetime | None:
 
 # --- Scraper Functions ---
 
-# Placeholder function - replace with actual scraping logic per site
 def scrape_indeed(query: str, location: str, pages: int = 1) -> List[schemas.JobCreate]:
-    logger.info(f"Starting Indeed scrape for query='{query}', location='{location}', pages={pages}")
+    """Scrapes job listings from Indeed using Playwright."""
+    logger.info(f"Starting Indeed Playwright scrape for query='{query}', location='{location}', pages={pages}")
     jobs: List[schemas.JobCreate] = []
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
+    # Selectors (These might need frequent updates based on Indeed's changes)
+    # Using data-testid where possible for potentially better stability
+    job_card_selector = 'div.job_seen_beacon' # Main container for each job card
+    title_link_selector = 'h2.jobTitle > a' # Contains title and link
+    company_selector = 'span[data-testid="company-name"]'
+    location_selector = 'div[data-testid="text-location"]'
+    date_selector = 'span[data-testid="myJobsStateDate"]' # Relative date like "Posted 2 days ago"
+    results_container_selector = '#mosaic-provider-jobcards > ul' # Container holding the job cards (li elements)
 
-    for page in range(pages):
-        start_index = page * 10 # Indeed pagination often uses 'start=' parameter
-        search_url = f"{INDEED_BASE_URL}/jobs?q={query}&l={location}&start={start_index}"
-        logger.info(f"Scraping URL: {search_url}")
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(headless=True) # Run headless for server environment
+            page = browser.new_page()
+        except Exception as e:
+            logger.error(f"Failed to launch Playwright browser: {e}")
+            return []
+
+        for page_num in range(pages):
+            start_index = page_num * 15 # Indeed pagination often uses 'start=' with steps of 15
+            params = {'q': query, 'l': location, 'start': start_index, 'filter': 0} # filter=0 might help avoid some modals
+            search_url = f"{INDEED_BASE_URL}/jobs?{urlencode(params)}"
+            logger.info(f"Navigating to URL: {search_url}")
+
+            try:
+                page.goto(search_url, timeout=30000) # Increased timeout
+                # Wait for the main job results container to be present
+                page.wait_for_selector(results_container_selector, timeout=20000)
+                logger.info(f"Page {page_num + 1} loaded successfully.")
+                # Optional: Add a small delay or wait for network idle if results load slowly
+                # page.wait_for_load_state('networkidle', timeout=5000)
+                time.sleep(2) # Small fixed delay as fallback
+
+            except PlaywrightTimeoutError:
+                logger.warning(f"Timeout waiting for job results container on page {page_num + 1} ({search_url}). Skipping page.")
+                continue
+            except Exception as e:
+                logger.error(f"Navigation or initial wait failed for {search_url}: {e}")
+                continue # Skip this page
+
+            # Locate all job cards within the container
+            try:
+                job_card_elements = page.locator(f'{results_container_selector} > li {job_card_selector}')
+                count = job_card_elements.count()
+                logger.info(f"Found {count} potential job card elements on page {page_num + 1}.")
+                if count == 0:
+                    logger.warning(f"No job card elements found using selector '{job_card_selector}' on page {page_num + 1}.")
+                    # Optional: Capture page HTML for debugging
+                    # logger.debug(page.content())
+                    continue
+            except Exception as e:
+                logger.error(f"Error locating job card elements on page {page_num + 1}: {e}")
+                continue
+
+            for i in range(count):
+                card = job_card_elements.nth(i)
+                title = "N/A"
+                company = "N/A"
+                location_text = "N/A"
+                job_url = None
+                date_posted: Optional[datetime] = None
+                description = None # Keep description simple for now
+
+                try:
+                    # Extract Title and URL
+                    title_link_element = card.locator(title_link_selector).first # Use first() to avoid error if multiple matches
+                    if title_link_element.count() > 0:
+                        title = title_link_element.inner_text(timeout=1000)
+                        href = title_link_element.get_attribute('href', timeout=1000)
+                        if href:
+                            job_url = urljoin(INDEED_BASE_URL, href)
+                    else:
+                        logger.debug(f"Title link selector '{title_link_selector}' not found in card {i+1}")
+
+
+                    # Extract Company
+                    company_element = card.locator(company_selector).first
+                    if company_element.count() > 0:
+                         company = company_element.inner_text(timeout=1000)
+                    else:
+                         logger.debug(f"Company selector '{company_selector}' not found in card {i+1}")
+
+
+                    # Extract Location
+                    location_element = card.locator(location_selector).first
+                    if location_element.count() > 0:
+                        location_text = location_element.inner_text(timeout=1000)
+                    else:
+                         logger.debug(f"Location selector '{location_selector}' not found in card {i+1}")
+
+
+                    # Extract Date
+                    date_element = card.locator(date_selector).first
+                    if date_element.count() > 0:
+                        date_str = date_element.inner_text(timeout=1000)
+                        date_posted = parse_relative_date(date_str)
+                    else:
+                         # Fallback: Try finding date in other common places if needed
+                         logger.debug(f"Date selector '{date_selector}' not found in card {i+1}")
+
+
+                    if title != "N/A" and company != "N/A" and job_url:
+                        job_data = schemas.JobCreate(
+                            title=title.strip(),
+                            company=company.strip(),
+                            location=location_text.strip(),
+                            url=job_url,
+                            source="Indeed",
+                            date_posted=date_posted,
+                            description=description # Keep None for now
+                        )
+                        jobs.append(job_data)
+                    else:
+                        logger.warning(f"Skipping card {i+1} on page {page_num+1} due to missing critical info (Title: {title}, Company: {company}, URL: {job_url})")
+
+                except PlaywrightTimeoutError as te:
+                     logger.warning(f"Timeout extracting data from card {i+1} on page {page_num+1}: {te}")
+                except Exception as e:
+                    logger.warning(f"Error processing card {i+1} on page {page_num+1}: {e}")
+
+            # Optional: Check for next page link and break if not found, or implement clicking 'next'
+            # next_button = page.locator('a[data-testid="pagination-page-next"]')
+            # if not next_button.is_visible():
+            #     logger.info("No next page button found. Ending scrape.")
+            #     break
 
         try:
-            response = requests.get(search_url, headers=headers, timeout=10)
-            response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed for {search_url}: {e}")
-            continue # Skip this page if request fails
+            browser.close()
+        except Exception as e:
+            logger.error(f"Error closing Playwright browser: {e}")
 
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        # --- Selector Logic (Highly dependent on Indeed's current HTML structure) ---
-        # This targets the main job results container found via browser inspection
-        # Often a 'div' with an id like 'mosaic-provider-jobcards' or similar
-        job_results_container = soup.find('div', id='mosaic-provider-jobcards')
-        if not job_results_container:
-             # Fallback: Sometimes results are within <ul> or other structures
-            job_results_container = soup.find('ul', class_='jobsearch-ResultsList') # Example fallback class
-
-        if not job_results_container:
-            logger.warning(f"Could not find job results container on page {page+1}. Structure might have changed.")
-            continue
-
-        # Find individual job cards within the container. This often involves 'a' tags with specific classes or attributes.
-        # We look for 'a' tags that seem to be direct links to job details.
-        job_cards = job_results_container.find_all('a', class_=lambda x: x and 'tapItem' in x, recursive=True) # Example based on observed classes
-
-        if not job_cards:
-             logger.warning(f"Could not find individual job card links on page {page+1}. Selectors might need update.")
-             continue
-
-
-        logger.info(f"Found {len(job_cards)} potential job card links on page {page+1}.")
-
-        for card in job_cards:
-            # Extract information relative to the card link ('a' tag)
-            # Titles are often in spans or headings within the card
-            title_element = card.find('span', attrs={'title': True})
-            title = title_element.text.strip() if title_element else "N/A"
-
-            # Company name is often nearby, maybe in a sibling or parent div
-            company_element = card.find('span', class_='companyName')
-            company = company_element.text.strip() if company_element else "N/A"
-
-            # Location is also often nearby
-            location_element = card.find('div', class_='companyLocation')
-            location_text = location_element.text.strip() if location_element else "N/A"
-
-            # Get the job link
-            job_url_relative = card.get('href')
-            if not job_url_relative:
-                continue
-            job_url = urljoin(INDEED_BASE_URL, job_url_relative)
-
-            # Date posted might be in a 'date' span
-            date_element = card.find('span', class_='date')
-            date_posted = parse_relative_date(date_element.text.strip()) if date_element else None
-
-            # Description snippet (optional, often limited on search results)
-            # description_snippet_element = card.find('div', class_='job-snippet')
-            # description = description_snippet_element.text.strip() if description_snippet_element else None
-            description = None # Keep it simple for now
-
-            if title != "N/A" and company != "N/A":
-                 try:
-                     job_data = schemas.JobCreate(
-                         title=title,
-                         company=company,
-                         location=location_text,
-                         url=job_url,
-                         source="Indeed",
-                         date_posted=date_posted,
-                         description=description
-                     )
-                     jobs.append(job_data)
-                 except Exception as e: # Catch validation errors etc.
-                     logger.warning(f"Failed to create JobCreate schema for {title} at {company}: {e}")
-
-
-    logger.info(f"Finished Indeed scrape. Found {len(jobs)} jobs.")
+    logger.info(f"Finished Indeed Playwright scrape. Found {len(jobs)} jobs.")
     return jobs
+
 
 def scrape_greenhouse(company_board_token: str) -> List[schemas.JobCreate]:
     """Scrapes jobs from a Greenhouse board using its API endpoint.
@@ -276,12 +322,13 @@ def run_scrapers() -> List[schemas.JobCreate]:
     all_jobs = []
     # Example: Define targets or fetch from config/DB
     try:
-        indeed_jobs = scrape_indeed(query="software engineer", location="Remote", pages=1) # Limit pages for now
+        # Limit pages for initial testing/development
+        indeed_jobs = scrape_indeed(query="software engineer", location="Remote", pages=1)
         all_jobs.extend(indeed_jobs)
     except Exception as e:
-        logger.error(f"Error running Indeed scraper: {e}")
+        logger.exception(f"Critical error running Indeed scraper: {e}") # Use logger.exception to include traceback
 
-    # Add calls to other scrapers (Lever, Greenhouse) here when implemented
+    # Add calls to other scrapers (Lever, Greenhouse) here
     # Example: Fetch list of Greenhouse boards to scrape from config/DB
     greenhouse_boards = ["airbnb", "stripe"] # Example list
     for board_token in greenhouse_boards:
@@ -289,7 +336,7 @@ def run_scrapers() -> List[schemas.JobCreate]:
             greenhouse_jobs = scrape_greenhouse(board_token)
             all_jobs.extend(greenhouse_jobs)
         except Exception as e:
-            logger.error(f"Error running Greenhouse scraper for {board_token}: {e}")
+            logger.exception(f"Error running Greenhouse scraper for {board_token}: {e}")
 
     # lever_jobs = scrape_lever(...)
     lever_sites = ["lever", "twitch"] # Example list
@@ -298,7 +345,7 @@ def run_scrapers() -> List[schemas.JobCreate]:
             lever_jobs = scrape_lever(site_tag)
             all_jobs.extend(lever_jobs)
         except Exception as e:
-            logger.error(f"Error running Lever scraper for {site_tag}: {e}")
+            logger.exception(f"Error running Lever scraper for {site_tag}: {e}")
 
     logger.info(f"Finished all scrapers. Found {len(all_jobs)} jobs in total.")
-    return all_jobs 
+    return all_jobs

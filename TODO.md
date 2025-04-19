@@ -129,10 +129,10 @@ Based on `vision.md`.
 *   ✅ Define Job DB Model (`models/job.py`)
 *   ✅ Define Job Pydantic Schemas (`schemas/job.py`)
 *   ✅ Implement Job CRUD operations (`crud/job.py`)
-*   ✅ Implement Job Board Scraper Service (`services/scraping.py` - Placeholders)
-    *   ⬜ Indeed adapter
-    *   ⬜ Greenhouse adapter
-    *   ⬜ Lever adapter
+*   ✅ Implement Job Board Scraper Service (`services/scraping.py` - Placeholders, API scrapers implemented)
+    *   ✅ Indeed adapter (Playwright implementation added)
+    *   ✅ Greenhouse adapter (API implementation exists)
+    *   ✅ Lever adapter (API implementation exists)
 *   ✅ Implement Job Matching Engine (`services/matching.py` - Basic structure, needs integration)
         *   ✅ Integrate SentenceTransformer model (basic load)
         *   ✅ Integrate Qdrant client (basic connection & collection check/creation)
@@ -145,11 +145,11 @@ Based on `vision.md`.
 *   ✅ Define Application/Tracking Model (`models/application.py`)
 *   ✅ Define Application Pydantic Schemas (`schemas/application.py`)
 *   ✅ Implement Application CRUD operations (`crud/application.py`)
-*   ✅ Implement Application API endpoints (`api/applications.py`)
-*   ⬜ Implement backend logic for Application Pipeline state
+*   ✅ Implement Application API endpoints (`api/applications.py` - includes GET, POST, PUT, DELETE)
+*   ✅ Implement backend logic for Application Pipeline state (Handled by `PUT /applications/{application_id}`)
 *   ⬜ Implement Auto-apply service (`services/autosubmit.py`)
     *   🚧 Setup Playwright/browser automation (Initial structure created)
-    *   🚧 Implement background task queuing (`workers/tasks.py` - Celery app and task defined)
+    *   ✅ Implement background task queuing (`workers/tasks.py` - Celery app and tasks for auto-apply and scraping defined)
     *   ✅ Implement rate limiting/quota logic for free tier (50/mo) (`check_user_quota` implemented and integrated into `apply_to_job`)
 
 ### Database
@@ -287,9 +287,9 @@ Based on `vision.md`.
 This section outlines the remaining major tasks required to bring JobBright to full feature completion based on the initial vision and current state.
 
 ### Backend Development (Completion)
-*   ⬜ **Scraping:** Fully implement and test Indeed, Greenhouse, and Lever adapters in `services/scraping.py`. Implement ToS checks/fallbacks.
+*   🚧 **Scraping:** Fully implement and test Indeed (Playwright), Greenhouse (API), and Lever (API) adapters in `services/scraping.py`. Implement ToS checks/fallbacks. Needs robust testing and potentially scheduling (e.g., Celery Beat).
 *   ⬜ **Auto-Apply:** Complete Playwright automation logic in `services/autosubmit.py` (robust handling of different ATS flows, error handling, CAPTCHA detection/mitigation strategy). Implement randomized intervals/human-like interaction. Ensure robust Celery task queueing and error handling (`workers/tasks.py`). Implement unlimited auto-apply logic for Pro tier (remove quota checks). Implement throttling heuristics for Elite tier.
-*   ⬜ **Application Tracking:** Implement backend logic for managing Application Pipeline states (e.g., Applied, Interviewing, Offer, Rejected).
+*   ✅ **Application Tracking:** Implement backend logic for managing Application Pipeline states (Handled by `PUT /applications/{application_id}` endpoint in `api/applications.py`).
 *   ⬜ **RBAC:** Implement Role-Based Access Control using Auth0 roles/permissions, protecting relevant API endpoints.
 *   ⬜ **Stripe Integration:** Fully implement Stripe subscription creation, status checking, webhook handling (`api/subs.py`, `models/payment.py`, `schemas/payment.py`). Handle Pro, Elite, and Annual billing logic.
 *   ⬜ **GPT-4o Integrations:**
