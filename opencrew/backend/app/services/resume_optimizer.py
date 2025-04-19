@@ -19,12 +19,14 @@ from app.schemas.optimize import (
     ParsedResume, ResumeSection, ResumeItem,
     KeywordAnalysisRequest, KeywordAnalysisResponse, MissingTerm,
     RewriteRequest, RewriteResponse,
-    Patch, ApplyPatchRequest, ApplyPatchResponse # Added patch schemas
+    Patch, ApplyPatchRequest, ApplyPatchResponse, # Added patch schemas
+    DiffRequest, DiffResponse # Added diff schemas
 )
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.units import inch
+from deepdiff import DeepDiff # Added for Phase 7
 
 logger = logging.getLogger(__name__)
 
@@ -574,6 +576,67 @@ def export_ats_pdf(docx_path: Path) -> Path:
         if output_path.exists():
             output_path.unlink() # Clean up partial file
         raise Exception(f"An unexpected error occurred during ATS-friendly PDF export: {str(e)}")
+
+
+# --- Phase 7: Store Diff ---
+
+def calculate_resume_diff(request: DiffRequest) -> DiffResponse:
+    """
+    Calculates the difference between the structured representation of two DOCX files.
+
+    Args:
+        request: DiffRequest containing paths to the original and modified DOCX files.
+
+    Returns:
+        DiffResponse containing the diff object.
+
+    Raises:
+        FileNotFoundError: If either input DOCX file is not found.
+        Exception: For errors during parsing or diff calculation.
+    """
+    original_path = Path(request.original_docx_path)
+    modified_path = Path(request.modified_docx_path)
+
+    if not original_path.exists():
+        raise FileNotFoundError(f"Original DOCX file not found at: {original_path}")
+    if not modified_path.exists():
+        raise FileNotFoundError(f"Modified DOCX file not found at: {modified_path}")
+
+    logger.info(f"Calculating diff between {original_path.name} and {modified_path.name}")
+
+    try:
+        # Parse both documents into the structured format
+        original_structure = parse_docx_to_structure(original_path)
+        modified_structure = parse_docx_to_structure(modified_path)
+
+        # Convert Pydantic models to dicts for deepdiff
+        original_dict = original_structure.model_dump()
+        modified_dict = modified_structure.model_dump()
+
+        # Calculate the difference
+        # ignore_order=True might be useful if section/item order isn't critical
+        # exclude_paths can be used to ignore certain fields if needed
+        diff = DeepDiff(original_dict, modified_dict, ignore_order=False, verbose_level=0)
+
+        # The diff object can be stored directly (e.g., as JSON in a database)
+        # For the API response, we return it as a dict
+        diff_dict = diff.to_dict()
+
+        logger.info(f"Successfully calculated diff. Changes found: {bool(diff_dict)}")
+        logger.debug(f"Diff result: {diff_dict}")
+
+        # In a real app, you would likely save this diff_dict to a database
+        # associated with the resume versions and return a diff_id.
+        # For now, we just return the diff itself.
+
+        return DiffResponse(
+            message="Diff calculated successfully.",
+            diff=diff_dict
+        )
+
+    except Exception as e:
+        logger.exception(f"Error calculating diff between {original_path.name} and {modified_path.name}: {e}")
+        raise Exception(f"Failed to calculate resume diff: {e}")
 
 
 # --- Phase 1: Ingest ---

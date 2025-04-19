@@ -28,3 +28,4 @@ spacy
 scikit-learn
 openai
 reportlab
+deepdiff

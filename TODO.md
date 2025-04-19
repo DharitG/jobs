@@ -362,3 +362,23 @@ This section outlines the remaining major tasks required to bring JobBright to f
 *   ⬜ Create wait-list page (if needed before full launch).
 *   ⬜ Conduct international-student focus calls for feedback.
 *   ⬜ Draft and finalize Privacy Policy & Terms of Service.
+
+
+---
+
+## Resume Optimization Feature (Refinements & Integration)
+
+*   ✅ **Backend Foundation:** Implemented basic API endpoints and service logic for all 7 phases (`/optimize` router, `resume_optimizer.py`).
+*   ⬜ **Refine Parsing (Phase 2):** Improve DOCX parsing logic (`is_likely_heading`, `get_paragraph_type`, handle tables/columns) for better accuracy across diverse resume formats.
+*   ⬜ **Refine Patching (Phase 5):** Enhance `apply_patches_to_docx` to perform run-level edits within paragraphs to better preserve inline formatting (e.g., bold, italics).
+*   ⬜ **Refine Keyword Analysis (Phase 3):** Consider using semantic embeddings (`sentence-transformers`) instead of or alongside TF-IDF for more relevant keyword gap identification.
+*   ⬜ **Refine AI Rewriting (Phase 4):** Test and tune the OpenAI prompt in `generate_rewrite_suggestion` for better constraint adherence and rewrite quality.
+*   ⬜ **Database Integration:**
+    *   ⬜ Define how/where to store file paths (original, converted, modified DOCX, exported PDFs) - potentially extend `models/resume.py`.
+    *   ⬜ Define how/where to store calculated diffs (Phase 7) - potentially new model/table linked to resume versions.
+    *   ⬜ Update relevant CRUD functions (`crud/resume.py`?) to handle saving/retrieving this data.
+*   ⬜ **Configuration:** Move hardcoded values (temp paths, API keys, model names) from `services/resume_optimizer.py` to `core/config.py`.
+*   ⬜ **Error Handling & Logging:** Add more robust error handling and detailed logging throughout the `resume_optimizer.py` service and `api/optimize.py` endpoints.
+*   ⬜ **Testing:** Write unit and integration tests for the new service functions and API endpoints.
+*   ⬜ **Frontend Integration:** Develop UI components to interact with the `/optimize/*` API endpoints.
+*   ⬜ **Deployment:** Ensure `unoconv`/LibreOffice is configured in the deployment environment (e.g., Dockerfile).

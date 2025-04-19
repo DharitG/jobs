@@ -10,7 +10,8 @@ from app.schemas.optimize import ( # Added Patch schemas
     IngestResponse, ParseRequest, ParsedResume,
     KeywordAnalysisRequest, KeywordAnalysisResponse,
     RewriteRequest, RewriteResponse,
-    Patch, ApplyPatchRequest, ApplyPatchResponse
+    Patch, ApplyPatchRequest, ApplyPatchResponse, # Added patch schemas
+    DiffRequest, DiffResponse # Added diff schemas
 )
 # Import dependencies needed for authentication if required later
 # from app.api.users import get_current_active_user
@@ -276,9 +277,149 @@ async def apply_patches(
         # Use the exception message from the service if it's specific
         detail = f"An unexpected error occurred during patch application: {str(e)}"
         if "Failed to apply patches" in str(e):
-            detail = str(e) # Propagate specific error
+             detail = str(e) # Propagate specific error
         raise HTTPException(status_code=500, detail=detail)
 
+
+@router.post(
+    "/diff",
+    response_model=DiffResponse,
+    summary="Calculate Resume Diff",
+    description="Calculates the difference between the structured representation of two DOCX files "
+                "(original vs. modified) using deepdiff.",
+    tags=["Resume Optimization"]
+)
+async def calculate_diff(
+    request: DiffRequest,
+    # Uncomment if authentication is needed
+    # current_user: User = Depends(get_current_active_user)
+):
+    """
+    Diff endpoint:
+    - Receives paths to the original and modified DOCX files.
+    - Calls the diff calculation service function.
+    - Returns the diff object.
+    """
+    logger.info(f"Received request to calculate diff between {request.original_docx_path} and {request.modified_docx_path}")
+    # Add user info: logger.info(f"User {current_user.email} calculating diff.")
+
+    original_path = Path(request.original_docx_path)
+    modified_path = Path(request.modified_docx_path)
+
+    # --- Input Validation ---
+    if not original_path.is_absolute() or not modified_path.is_absolute():
+         logger.error(f"Diff rejected: Paths must be absolute.")
+         raise HTTPException(status_code=400, detail="Invalid file paths provided (must be absolute).")
+    if not original_path.exists():
+        logger.error(f"Diff rejected: Original file not found at path: {original_path}")
+        raise HTTPException(status_code=404, detail="Original DOCX file not found at the specified path.")
+    if not modified_path.exists():
+        logger.error(f"Diff rejected: Modified file not found at path: {modified_path}")
+        raise HTTPException(status_code=404, detail="Modified DOCX file not found at the specified path.")
+    if not original_path.is_file() or not modified_path.is_file():
+         logger.error(f"Diff rejected: One or both paths are not files.")
+         raise HTTPException(status_code=400, detail="Invalid file paths provided (not files).")
+
+    # Security checks
+    allowed_dirs = [resume_optimizer.CONVERTED_DOCX_DIR] # Only allow files in our working dir
+    try:
+        original_path.relative_to(resume_optimizer.CONVERTED_DOCX_DIR)
+        modified_path.relative_to(resume_optimizer.CONVERTED_DOCX_DIR)
+    except ValueError:
+        logger.error(f"Diff rejected: Paths are outside the allowed directory.")
+        raise HTTPException(status_code=400, detail="Invalid file paths provided (access denied).")
+    # --- End Validation ---
+
+    try:
+        # Note: calculate_resume_diff is synchronous
+        diff_result: DiffResponse = resume_optimizer.calculate_resume_diff(request)
+
+        # Here, instead of returning the diff directly, you would typically store
+        # diff_result.diff (e.g., as JSON) in a database linked to the resume versions
+        # and return a confirmation or a diff ID.
+        # For now, we return the calculated diff as per the schema.
+
+        return diff_result
+    except FileNotFoundError as e:
+        # Should be caught by checks above, but handle defensively
+        logger.error(f"File not found during diff service call: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Unexpected error during diff calculation: {e}")
+        detail = f"An unexpected error occurred during diff calculation: {str(e)}"
+        if "Failed to calculate resume diff" in str(e):
+             detail = str(e) # Propagate specific error
+        raise HTTPException(status_code=500, detail=detail)
+
+@router.post(
+    "/diff",
+    response_model=DiffResponse,
+    summary="Calculate Resume Diff",
+    description="Calculates the difference between the structured representation of two DOCX files "
+                "(original vs. modified) using deepdiff.",
+    tags=["Resume Optimization"]
+)
+async def calculate_diff(
+    request: DiffRequest,
+    # Uncomment if authentication is needed
+    # current_user: User = Depends(get_current_active_user)
+):
+    """
+    Diff endpoint:
+    - Receives paths to the original and modified DOCX files.
+    - Calls the diff calculation service function.
+    - Returns the diff object.
+    """
+    logger.info(f"Received request to calculate diff between {request.original_docx_path} and {request.modified_docx_path}")
+    # Add user info: logger.info(f"User {current_user.email} calculating diff.")
+
+    original_path = Path(request.original_docx_path)
+    modified_path = Path(request.modified_docx_path)
+
+    # --- Input Validation ---
+    if not original_path.is_absolute() or not modified_path.is_absolute():
+         logger.error(f"Diff rejected: Paths must be absolute.")
+         raise HTTPException(status_code=400, detail="Invalid file paths provided (must be absolute).")
+    if not original_path.exists():
+        logger.error(f"Diff rejected: Original file not found at path: {original_path}")
+        raise HTTPException(status_code=404, detail="Original DOCX file not found at the specified path.")
+    if not modified_path.exists():
+        logger.error(f"Diff rejected: Modified file not found at path: {modified_path}")
+        raise HTTPException(status_code=404, detail="Modified DOCX file not found at the specified path.")
+    if not original_path.is_file() or not modified_path.is_file():
+         logger.error(f"Diff rejected: One or both paths are not files.")
+         raise HTTPException(status_code=400, detail="Invalid file paths provided (not files).")
+
+    # Security checks
+    allowed_dirs = [resume_optimizer.CONVERTED_DOCX_DIR] # Only allow files in our working dir
+    try:
+        original_path.relative_to(resume_optimizer.CONVERTED_DOCX_DIR)
+        modified_path.relative_to(resume_optimizer.CONVERTED_DOCX_DIR)
+    except ValueError:
+        logger.error(f"Diff rejected: Paths are outside the allowed directory.")
+        raise HTTPException(status_code=400, detail="Invalid file paths provided (access denied).")
+    # --- End Validation ---
+
+    try:
+        # Note: calculate_resume_diff is synchronous
+        diff_result: DiffResponse = resume_optimizer.calculate_resume_diff(request)
+
+        # Here, instead of returning the diff directly, you would typically store
+        # diff_result.diff (e.g., as JSON) in a database linked to the resume versions
+        # and return a confirmation or a diff ID.
+        # For now, we return the calculated diff as per the schema.
+
+        return diff_result
+    except FileNotFoundError as e:
+        # Should be caught by checks above, but handle defensively
+        logger.error(f"File not found during diff service call: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Unexpected error during diff calculation: {e}")
+        detail = f"An unexpected error occurred during diff calculation: {str(e)}"
+        if "Failed to calculate resume diff" in str(e):
+             detail = str(e) # Propagate specific error
+        raise HTTPException(status_code=500, detail=detail)
 
 @router.get(
     "/export",
