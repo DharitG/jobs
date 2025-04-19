@@ -4,6 +4,7 @@ import { createHydrationHelpers } from "@trpc/react-query/rsc";
 import { headers } from "next/headers";
 import { cache } from "react";
 
+import type { NextRequest } from 'next/server'; // Import NextRequest
 import { createCaller, type AppRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 import { createQueryClient } from "./query-client";
@@ -16,8 +17,11 @@ const createContext = cache(async () => {
   const heads = new Headers(await headers());
   heads.set("x-trpc-source", "rsc");
 
+  // Pass undefined for req as it's not available in RSC context,
+  // but required by the function signature. Cast to satisfy TypeScript.
   return createTRPCContext({
     headers: heads,
+    req: undefined as unknown as NextRequest,
   });
 });
 
