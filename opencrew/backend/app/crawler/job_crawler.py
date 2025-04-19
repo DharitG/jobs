@@ -15,6 +15,7 @@ Design goals
 """
 
 import json, logging, os, re, textwrap, yaml, datetime as dt
+import asyncio
 from urllib.parse import urljoin
 
 import scrapy

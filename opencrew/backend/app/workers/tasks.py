@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from .celery_app import celery_app # Import the configured Celery app
 from ..services import autosubmit, scraping, matching # Import scraping and matching services

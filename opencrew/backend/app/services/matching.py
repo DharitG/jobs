@@ -23,11 +23,12 @@ except Exception as e:
 JOB_COLLECTION = "jobs" # Added collection name
 
 try:
-    # Ensure Qdrant client uses config
+    # Ensure Qdrant client uses config, including API key and HTTPS for cloud
     qdrant_db = qdrant_client.QdrantClient(
         host=settings.QDRANT_HOST,
-        port=settings.QDRANT_PORT
-        # Consider adding api_key=settings.QDRANT_API_KEY if using authentication
+        port=settings.QDRANT_PORT,
+        api_key=settings.QDRANT_API_KEY, # Use API Key from settings
+        https=(settings.QDRANT_PORT == 443) # Enable HTTPS if using standard HTTPS port
     )
     # Check and create collection if it doesn't exist
     try:
