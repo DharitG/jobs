@@ -22,11 +22,11 @@ export const metadata = {
   openGraph: {
     title: "OpenCrew – 1-Click Auto‑Apply & Visa‑Safe Job Search", // Updated name
     description: "OpenCrew cuts weeks off your job hunt with AI‑tailored applications, warm intros, and visa‑safe filters. Land interviews faster – free to start.", // Updated name
-    url: 'https://opencrew.ai', // Replace with actual production URL later, updated name
+    url: 'https://opencrew.io', // Corrected production URL
     siteName: 'OpenCrew', // Updated name
     images: [
       {
-        url: '/og/hero.png', // Replace with actual OG image path, relative path ok for dev
+        url: '/assets/image.png', // Updated OG image path
         width: 1200, // Standard OG image width
         height: 630, // Standard OG image height
         alt: 'OpenCrew Hero Image', // Updated name
@@ -39,7 +39,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: "OpenCrew – 1-Click Auto‑Apply & Visa‑Safe Job Search", // Updated name
     description: "OpenCrew cuts weeks off your job hunt with AI‑tailored applications, warm intros, and visa‑safe filters. Land interviews faster – free to start.", // Updated name
-    images: ['/og/hero.png'], // Must be absolute URL in production
+    images: ['/assets/image.png'], // Updated Twitter image path
     // site: '@opencrew', // Replace with actual Twitter handle
     // creator: '@opencrew', // Replace with actual Twitter handle
   },

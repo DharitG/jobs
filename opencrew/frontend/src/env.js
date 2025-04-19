@@ -25,7 +25,7 @@ export const env = createEnv({
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_BACKEND_API_URL: z.string().url(),
     NEXT_PUBLIC_AUTH0_DOMAIN: z.string().min(1),
-    // NEXT_PUBLIC_AUTH0_AUDIENCE: z.string().min(1), // Audience is typically backend-only
+    NEXT_PUBLIC_AUTH0_AUDIENCE: z.string().min(1), // Audience needed for frontend to request tokens for backend API
     // We need the Client ID for the client-side Auth0Provider
     NEXT_PUBLIC_AUTH0_CLIENT_ID: z.string().min(1),
   },
@@ -46,7 +46,7 @@ export const env = createEnv({
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
     NEXT_PUBLIC_BACKEND_API_URL: process.env.NEXT_PUBLIC_BACKEND_API_URL,
     NEXT_PUBLIC_AUTH0_DOMAIN: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
-    // NEXT_PUBLIC_AUTH0_AUDIENCE: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE, // Removed
+    NEXT_PUBLIC_AUTH0_AUDIENCE: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE, // Added back
     NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
   },
   /**
