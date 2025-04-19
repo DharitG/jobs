@@ -23,3 +23,8 @@ scrapy
 PyYAML
 extruct
 asyncpg
+python-docx
+spacy
+scikit-learn
+openai
+reportlab
