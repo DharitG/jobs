@@ -60,6 +60,8 @@ services:
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}
       # SECRET_KEY: loaded from .env
+    # Command to run migrations then start the server
+    command: bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -107,4 +109,4 @@ volumes:
 
 networks:
   jobbright_net:
-    driver: bridge 
+    driver: bridge

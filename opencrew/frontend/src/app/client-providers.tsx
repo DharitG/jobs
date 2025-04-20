@@ -20,28 +20,21 @@ export function ClientProviders({ children }: ClientProvidersProps) {
     return null; // Return null if config is missing
   }
 
-  // Use window.location.origin safely inside the client component
-  const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
-
-  // If redirectUri is not available yet (might happen briefly), 
-  // potentially return a loading state or null.
-  if (!redirectUri) {
-    // Return null while waiting for redirectUri to be determined client-side
-    // This prevents children rendering without providers.
-    console.warn("Redirect URI not available yet in ClientProviders, waiting..."); 
-    return null; 
-  }
+  // No need to manually handle redirectUri here,
+  // the Auth0 SDK handles the callback URL automatically.
 
   return (
     <Auth0Provider
       domain={auth0Domain}
       clientId={auth0ClientId}
       authorizationParams={{
-        redirect_uri: redirectUri,
+        // redirect_uri is handled automatically by the SDK on callback
         audience: auth0Audience,
       }}
+      // The SDK will automatically handle the redirect by checking window.location
+      // upon initialization after the redirect from Auth0.
     >
       <TRPCReactProvider>{children}</TRPCReactProvider>
     </Auth0Provider>
   );
-} 
+}
