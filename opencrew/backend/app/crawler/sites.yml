@@ -1,19 +1,147 @@
-# Example site configuration for job_crawler.py
-# Add your target sites here following this format:
+# Job Board Configurations for Job Crawler
+# mode: 'api' for Greenhouse Job Board API (use board name as seed)
+# mode: 'listing' for Lever pages (use full URL as seed)
 
-# - name: Example Company Jobs # A descriptive name for the source
-#   mode: listing # Crawl mode: 'listing', 'sitemap', or 'api'
-#   seeds:
-#     - https://jobs.example.com/careers # Starting URL(s) for the crawler
+# --- Greenhouse Sites (using API) ---
+- name: OpenAI
+  source: greenhouse
+  mode: api
+  seeds:
+    - openai
+- name: Stripe
+  source: greenhouse
+  mode: api
+  seeds:
+    - stripe
+- name: Notion
+  source: greenhouse
+  mode: api
+  seeds:
+    - notion
+- name: Figma (Greenhouse) # Specify source if company uses multiple
+  source: greenhouse
+  mode: api
+  seeds:
+    - figma
+- name: Airbnb
+  source: greenhouse
+  mode: api
+  seeds:
+    - airbnb
+- name: Pinterest
+  source: greenhouse
+  mode: api
+  seeds:
+    - pinterest
+- name: Square
+  source: greenhouse
+  mode: api
+  seeds:
+    - square
+- name: Coinbase
+  source: greenhouse
+  mode: api
+  seeds:
+    - coinbase
+- name: Dropbox
+  source: greenhouse
+  mode: api
+  seeds:
+    - dropbox
+- name: Lyft
+  source: greenhouse
+  mode: api
+  seeds:
+    - lyft
+- name: Asana
+  source: greenhouse
+  mode: api
+  seeds:
+    - asana
+- name: Twilio
+  source: greenhouse
+  mode: api
+  seeds:
+    - twilio
+- name: HubSpot
+  source: greenhouse
+  mode: api
+  seeds:
+    - hubspot
+- name: Datadog
+  source: greenhouse
+  mode: api
+  seeds:
+    - datadog
+- name: GitLab
+  source: greenhouse
+  mode: api
+  seeds:
+    - gitlab
+- name: Intercom
+  source: greenhouse
+  mode: api
+  seeds:
+    - intercom
 
-# - name: Another Example API
-#   mode: api
-#   seeds:
-#     - https://api.example.com/v1/jobs
-
-# - name: Example Sitemap
-#   mode: sitemap
-#   seeds:
-#     - https://www.example.com/sitemap_jobs.xml
-
-# --- Add your actual site configurations below ---
+# --- Lever Sites (using API) ---
+- name: Anthropic
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - anthropic # Site tag
+- name: Netflix
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - netflix # Site tag
+- name: Reddit
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - reddit # Site tag
+- name: Brex
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - brex # Site tag
+- name: Canva
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - canva # Site tag
+- name: Plaid
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - plaid # Site tag
+- name: Ramp
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - ramp # Site tag
+- name: Scale AI
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - scaleai # Site tag
+- name: Figma (Lever) # Specify source if company uses multiple
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - figma # Site tag
+- name: Shopify
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - shopify # Site tag
+- name: Twitch
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - twitch # Site tag
+- name: Palantir Technologies
+  source: lever
+  mode: api # Use Lever API
+  seeds:
+    - palantir # Site tag

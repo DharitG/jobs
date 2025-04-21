@@ -11,8 +11,18 @@ class Resume(Base):
     filename = Column(String, nullable=True)
     content = Column(Text, nullable=False)
     embedding = Column(JSON, nullable=True) # Store embedding as JSON
+    
+    # File paths related to optimization process
+    original_filepath = Column(String, nullable=True)
+    converted_filepath = Column(String, nullable=True) # e.g., path to plain text version
+    modified_filepath = Column(String, nullable=True) # e.g., path to docx with patches applied
+    exported_filepath = Column(String, nullable=True) # e.g., path to final exported pdf/docx
+    
+    # Store optimization suggestions/diffs
+    optimization_diffs = Column(JSON, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    owner = relationship("User", back_populates="resumes") 
+    owner = relationship("User", back_populates="resumes")

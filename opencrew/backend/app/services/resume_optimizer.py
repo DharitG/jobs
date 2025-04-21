@@ -14,6 +14,9 @@ import re # For basic text cleaning
 from openai import OpenAI, OpenAIError # Added for Phase 4
 import os # To get API key
 
+# Import settings
+from app.core.config import settings
+
 # Import the schemas defined for structured output
 from app.schemas.optimize import (
     ParsedResume, ResumeSection, ResumeItem,
@@ -45,14 +48,14 @@ if not shutil.which("unoconv"):
 # --- Phase 2: Parse & Model ---
 
 # Load spaCy model (consider loading only once at app startup for efficiency)
-# You might need to download the model first: python -m spacy download en_core_web_sm
+# You might need to download the model first: python -m spacy download {settings.SPACY_MODEL_NAME}
 try:
-    nlp = spacy.load("en_core_web_sm")
-    logger.info("spaCy model 'en_core_web_sm' loaded.")
+    nlp = spacy.load(settings.SPACY_MODEL_NAME)
+    logger.info(f"spaCy model '{settings.SPACY_MODEL_NAME}' loaded.")
 except OSError:
     logger.warning(
-        "spaCy model 'en_core_web_sm' not found. "
-        "Please download it: python -m spacy download en_core_web_sm. "
+        f"spaCy model '{settings.SPACY_MODEL_NAME}' not found. "
+        f"Please download it: python -m spacy download {settings.SPACY_MODEL_NAME}. "
         "Parsing features might be limited."
     )
     nlp = None # Set to None if loading fails
@@ -323,7 +326,7 @@ Rewritten {item_type}:
     try:
         # Use the chat completions endpoint (recommended)
         completion = openai_client.chat.completions.create(
-            model="gpt-4-turbo-preview", # Or another suitable model like gpt-3.5-turbo
+            model=settings.OPENAI_MODEL_NAME,
             messages=[
                 {"role": "system", "content": "You are an expert resume editor."},
                 {"role": "user", "content": prompt}

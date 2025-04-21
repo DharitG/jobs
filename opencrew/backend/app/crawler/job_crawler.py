@@ -87,20 +87,51 @@ class JobSpider(scrapy.Spider):
     # ----- seeds ---------
     def start_requests(self):
         for site in self.sites:
-            mode = site.get("mode", "list")
-            for seed in site.get("seeds", []):
-                meta = {"site": site, "mode": mode}
-                yield scrapy.Request(seed, callback=self.route, meta=meta)
+            mode = site.get("mode", "listing").lower() # Default to listing
+            source = site.get("source", "").lower()
+            seeds = site.get("seeds", [])
+            name = site.get("name", "Unknown Site")
+
+            if not seeds:
+                 self.logger.warning(f"No seeds found for site: {name}")
+                 continue
+
+            meta = {"site": site, "mode": mode, "source": source} # Pass source in meta
+
+            for seed in seeds:
+                request_url = seed # Default for listing/sitemap
+                callback_func = self.route
+
+                if mode == "api":
+                    callback_func = self.parse_api # Go directly to API parser
+                    if source == "greenhouse":
+                        # Seed is the board token
+                        request_url = f"https://boards-api.greenhouse.io/v1/boards/{seed}/jobs?content=true"
+                    elif source == "lever":
+                        # Seed is the site tag
+                        request_url = f"https://api.lever.co/v0/postings/{seed}?mode=json"
+                    else:
+                        self.logger.warning(f"Unsupported API source '{source}' for site: {name}. Skipping seed: {seed}")
+                        continue
+                elif mode == "sitemap":
+                     callback_func = self.parse_sitemap # Go directly to sitemap parser
+                # else mode == "listing", use default seed URL and self.route
+
+                self.logger.info(f"Yielding request for {name} ({source}/{mode}): {request_url}")
+                yield scrapy.Request(request_url, callback=callback_func, meta=meta)
+
 
     # ----- router --------
+    # This route function is now only needed if start_requests yields with callback=self.route (e.g., for listing mode)
     def route(self, response):
         mode = response.meta["mode"]
-        if mode == "sitemap":
-            yield from self.parse_sitemap(response)
-        elif mode == "api":
-            yield from self.parse_api(response)
+        # We should only arrive here for 'listing' mode now.
+        # Sitemap and API modes have direct callbacks from start_requests.
+        if mode == "listing":
+             yield from self.parse_listing(response)
         else:
-            yield from self.parse_listing(response)
+             self.logger.warning(f"Unexpected arrival at route() for mode: {mode}. URL: {response.url}")
+
 
     # ----- sitemap (XML) --
     def parse_sitemap(self, response):
@@ -109,34 +140,94 @@ class JobSpider(scrapy.Spider):
             yield scrapy.Request(loc, callback=self.parse_job, meta=response.meta)
 
     # ----- API (JSON) -----
+    # This method now directly parses the API response and yields JobItems
     def parse_api(self, response):
+        source = response.meta.get("source")
+        site_name = response.meta.get("site", {}).get("name", "Unknown Site")
+        self.logger.info(f"Parsing API response for {site_name} ({source}) from {response.url}")
+
         try:
             data = json.loads(response.text)
-            # Adapt this part based on the actual API structure
-            jobs_list = data # Default assumption: list of jobs
-            if isinstance(data, dict): # Handle common case where jobs are under a key
-                 jobs_list = data.get("jobs", []) or data.get("results", [])
-
-            for post in jobs_list:
-                 # Adapt field extraction based on API structure
-                 url = post.get("url") or post.get("absolute_url") or post.get("job_url")
-                 if url:
-                     # Pass entire post data in meta for potential use in parse_job
-                     response.meta['api_post_data'] = post
-                     yield scrapy.Request(url, callback=self.parse_job, meta=response.meta, dont_filter=True)
-                 else:
-                     # If no URL, try to yield item directly from API data
-                     loader = ItemLoader(item=JobItem(), selector=post) # Use post dict as selector
-                     loader.add_value("title", post.get("title"))
-                     # ... add other fields directly from post dict ...
-                     loader.add_value("source", response.meta["site"].get("name"))
-                     loader.add_value("url", response.url) # Use API endpoint URL if no specific job URL
-                     loader.add_value("scraped_at", dt.datetime.utcnow().isoformat())
-                     # ... handle description, location etc. from API data ...
-                     yield loader.load_item()
-
         except json.JSONDecodeError:
-            self.logger.error(f"Failed to parse JSON from API: {response.url}")
+            self.logger.error(f"Failed to parse JSON from API response: {response.url}")
+            return
+
+        jobs_list = []
+        if source == "greenhouse":
+            if isinstance(data, dict) and 'jobs' in data:
+                jobs_list = data['jobs']
+            else:
+                 self.logger.warning(f"Unexpected JSON structure for Greenhouse API: {response.url}")
+                 return
+        elif source == "lever":
+            if isinstance(data, list):
+                jobs_list = data
+            else:
+                self.logger.warning(f"Unexpected JSON structure for Lever API: {response.url}")
+                return
+        else:
+            self.logger.warning(f"parse_api called for unhandled source: {source}")
+            return
+
+        self.logger.info(f"Found {len(jobs_list)} potential job items in API response for {site_name}")
+
+        for job_item in jobs_list:
+            if not isinstance(job_item, dict):
+                 self.logger.warning(f"Skipping non-dict item in API response for {site_name}")
+                 continue
+
+            loader = ItemLoader(item=JobItem()) # No response needed for loader when using add_value
+
+            # --- Field Extraction (adapt based on source) ---
+            title = None
+            url = None
+            location = None
+            description = None
+            date_posted_str = None
+            job_id = job_item.get('id', 'N/A') # For logging
+
+            if source == "greenhouse":
+                title = job_item.get('title')
+                url = job_item.get('absolute_url')
+                location = job_item.get('location', {}).get('name', 'N/A') if job_item.get('location') else 'N/A'
+                description_html = job_item.get('content', '')
+                description = remove_tags(description_html) # Use w3lib helper
+                date_posted_str = job_item.get('updated_at')
+            elif source == "lever":
+                title = job_item.get('text')
+                url = job_item.get('hostedUrl')
+                location = job_item.get('categories', {}).get('location', 'N/A')
+                description_html = job_item.get('description')
+                description_plain = job_item.get('descriptionPlain', '')
+                description = description_plain if description_plain else remove_tags(description_html)
+                created_at_ms = job_item.get('createdAt')
+                if created_at_ms:
+                    try:
+                        # Convert ms timestamp to ISO string for consistency
+                        date_posted_dt = dt.datetime.fromtimestamp(created_at_ms / 1000, tz=dt.timezone.utc)
+                        date_posted_str = date_posted_dt.isoformat()
+                    except Exception as e:
+                        self.logger.warning(f"Could not parse Lever createdAt timestamp {created_at_ms}: {e}")
+
+            # --- Loading Item ---
+            if not title or not url:
+                 self.logger.warning(f"Skipping job item from {site_name} due to missing title or URL. ID: {job_id}")
+                 continue
+
+            loader.add_value("title", title)
+            loader.add_value("url", url)
+            loader.add_value("company", site_name) # Use the name from sites.yml
+            loader.add_value("location", location)
+            loader.add_value("description_md", description) # Store plain text description
+            loader.add_value("date_posted", date_posted_str) # Store as string, pipeline handles parsing
+            loader.add_value("source", site_name) # Or use source variable ('greenhouse'/'lever')? Using site name for now.
+            loader.add_value("scraped_at", dt.datetime.utcnow().isoformat())
+            loader.add_value("raw", json.dumps(job_item)[:5000]) # Store snippet of raw JSON
+
+            # H1B detection
+            loader.add_value("h1b_sponsor", detect_h1b(description or ""))
+
+            yield loader.load_item()
 
 
     # ----- HTML listing ---
@@ -162,39 +253,31 @@ class JobSpider(scrapy.Spider):
         for n in nexts[:3]: # Limit pagination depth per page
             yield response.follow(n, callback=self.parse_listing, meta=response.meta)
 
-    # ----- parse Job page --
+    # ----- parse Job page -- (Now only for HTML pages from listing/sitemap modes)
     def parse_job(self, response):
         loader = ItemLoader(item=JobItem(), response=response)
         loader.default_output_processor = TakeFirst()
 
-        # Try extracting from API data passed via meta first
-        api_data = response.meta.get('api_post_data')
-        if api_data and isinstance(api_data, dict):
-             loader.add_value("title", api_data.get("title"))
-             loader.add_value("company", api_data.get("company_name") or api_data.get("hiringOrganization", {}).get("name"))
-             loader.add_value("location", api_data.get("location") or api_data.get("jobLocation", {}).get("address", {}).get("addressLocality"))
-             loader.add_value("description_md", api_data.get("description") or api_data.get("content"))
-             loader.add_value("date_posted", api_data.get("posted_date") or api_data.get("datePosted"))
-        else:
-            # Extract structured data (JSON-LD, Microdata)
-            ld = extruct.extract(response.text, syntaxes=["json-ld", "microdata"])
-            job = None
-            for syntax in (ld.get("json-ld") or []) + (ld.get("microdata") or []):
-                if isinstance(syntax, dict) and syntax.get("@type") == "JobPosting":
-                    job = syntax
-                    break
-            if job:
-                loader.add_value("title", job.get("title"))
-                loader.add_value("company", job.get("hiringOrganization", {}).get("name"))
-                loader.add_value("location", job.get("jobLocation", {}).get("address", {}).get("addressLocality"))
-                loader.add_value("description_md", job.get("description"))
-                loader.add_value("date_posted", job.get("datePosted"))
-            else:  # fallback naive selectors if no structured data
-                loader.add_css("title", "h1::text, .job-title::text") # Add common class selectors
-                loader.add_css("company", "[class*='company']::text, .company-name::text")
-                loader.add_css("location", "[class*='location']::text, .job-location::text")
-                desc_html = response.css("article, .description, #job-description, .job-details").get() # Add common class selectors
-                loader.add_value("description_md", remove_tags(desc_html or ""))
+        # Extract structured data (JSON-LD, Microdata)
+        # No longer check response.meta['api_post_data'] here
+        ld = extruct.extract(response.text, syntaxes=["json-ld", "microdata"])
+        job = None
+        for syntax in (ld.get("json-ld") or []) + (ld.get("microdata") or []):
+            if isinstance(syntax, dict) and syntax.get("@type") == "JobPosting":
+                job = syntax
+                break
+        if job:
+            loader.add_value("title", job.get("title"))
+            loader.add_value("company", job.get("hiringOrganization", {}).get("name"))
+            loader.add_value("location", job.get("jobLocation", {}).get("address", {}).get("addressLocality"))
+            loader.add_value("description_md", job.get("description"))
+            loader.add_value("date_posted", job.get("datePosted"))
+        else:  # fallback naive selectors if no structured data
+            loader.add_css("title", "h1::text, .job-title::text") # Add common class selectors
+            loader.add_css("company", "[class*='company']::text, .company-name::text")
+            loader.add_css("location", "[class*='location']::text, .job-location::text")
+            desc_html = response.css("article, .description, #job-description, .job-details").get() # Add common class selectors
+            loader.add_value("description_md", remove_tags(desc_html or ""))
 
         raw_text = response.text[:15000]  # store small slice for audit
         loader.add_value("raw", raw_text)

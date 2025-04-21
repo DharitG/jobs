@@ -1,4 +1,5 @@
 import enum
+from sqlalchemy import Column, Integer, String, Boolean, Enum as SQLEnum, Date, DateTime, func, Index
 from sqlalchemy import Column, Integer, String, Boolean, Enum as SQLEnum, Date, DateTime, func
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -25,6 +26,13 @@ class User(Base):
     subscription_tier = Column(SQLEnum(SubscriptionTier), default=SubscriptionTier.FREE, nullable=False)
     current_streak = Column(Integer, default=0, nullable=False)
     last_streak_update = Column(DateTime, nullable=True, default=None) # Stores timestamp of last activity contributing to streak
+
+    # Stripe specific fields
+    stripe_customer_id = Column(String, unique=True, index=True, nullable=True)
+    stripe_subscription_id = Column(String, unique=True, index=True, nullable=True)
+    stripe_subscription_status = Column(String, index=True, nullable=True) # e.g., 'active', 'canceled', 'past_due', 'trialing'
+    subscription_current_period_end = Column(DateTime, nullable=True) # Store when the current sub period ends
+
 
     resumes = relationship("Resume", back_populates="owner", cascade="all, delete-orphan")
     applications = relationship("Application", back_populates="user", cascade="all, delete-orphan")

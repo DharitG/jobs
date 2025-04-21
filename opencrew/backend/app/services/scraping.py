@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 import time # For potential delays
 from typing import List, Optional
+import yaml # Add yaml import
+import os # Add os import
 
 from .. import schemas
 
@@ -316,36 +318,72 @@ def scrape_lever(company_site_tag: str) -> List[schemas.JobCreate]:
     logger.info(f"Finished Lever scrape for {company_site_tag}. Found {len(jobs)} valid jobs.")
     return jobs
 
-# --- Main Scraper Function --- 
+# --- Main Scraper Function ---
 def run_scrapers() -> List[schemas.JobCreate]:
-    """Run all configured scrapers."""
-    all_jobs = []
-    # Example: Define targets or fetch from config/DB
+    """Run scrapers based on the configuration in ../crawler/sites.yml."""
+    all_jobs: List[schemas.JobCreate] = []
+    sites_config = []
+
+    # Construct the path to sites.yml relative to this script's directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    sites_yaml_path = os.path.join(current_dir, '..', 'crawler', 'sites.yml')
+
+    logger.info(f"Loading site configurations from: {sites_yaml_path}")
+
     try:
-        # Limit pages for initial testing/development
-        indeed_jobs = scrape_indeed(query="software engineer", location="Remote", pages=1)
-        all_jobs.extend(indeed_jobs)
+        with open(sites_yaml_path, 'r') as f:
+            sites_config = yaml.safe_load(f)
+        if not isinstance(sites_config, list):
+            logger.error(f"Invalid format in {sites_yaml_path}. Expected a list of sites.")
+            sites_config = [] # Prevent further errors
+    except FileNotFoundError:
+        logger.error(f"Configuration file not found: {sites_yaml_path}")
+        return [] # Cannot proceed without config
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing YAML file {sites_yaml_path}: {e}")
+        return [] # Cannot proceed with invalid config
     except Exception as e:
-        logger.exception(f"Critical error running Indeed scraper: {e}") # Use logger.exception to include traceback
+        logger.error(f"Unexpected error loading {sites_yaml_path}: {e}")
+        return []
 
-    # Add calls to other scrapers (Lever, Greenhouse) here
-    # Example: Fetch list of Greenhouse boards to scrape from config/DB
-    greenhouse_boards = ["airbnb", "stripe"] # Example list
-    for board_token in greenhouse_boards:
+    logger.info(f"Found {len(sites_config)} site configurations.")
+
+    for site in sites_config:
+        name = site.get('name', 'Unknown Site')
+        source = site.get('source', '').lower()
+        mode = site.get('mode', '').lower()
+        seeds = site.get('seeds', [])
+
+        if not seeds:
+            logger.warning(f"Skipping site '{name}': No seeds provided.")
+            continue
+
+        seed = seeds[0] # Assuming one seed per entry for API modes
+
+        logger.info(f"Processing site: '{name}' (Source: {source}, Mode: {mode}, Seed: {seed})")
+
         try:
-            greenhouse_jobs = scrape_greenhouse(board_token)
-            all_jobs.extend(greenhouse_jobs)
-        except Exception as e:
-            logger.exception(f"Error running Greenhouse scraper for {board_token}: {e}")
+            site_jobs = []
+            if source == 'greenhouse' and mode == 'api':
+                site_jobs = scrape_greenhouse(company_board_token=seed)
+            elif source == 'lever' and mode == 'api':
+                 site_jobs = scrape_lever(company_site_tag=seed)
+            # Add elif for 'indeed' or other sources/modes if needed later
+            # elif source == 'indeed' and mode == 'listing':
+            #     # Need to decide how to handle query/location for Indeed from config
+            #     # For now, skipping Indeed in this dynamic run
+            #     logger.info(f"Skipping Indeed site '{name}' in dynamic run for now.")
+            #     continue
+            else:
+                logger.warning(f"Skipping site '{name}': Unsupported source/mode combination ({source}/{mode}).")
+                continue
 
-    # lever_jobs = scrape_lever(...)
-    lever_sites = ["lever", "twitch"] # Example list
-    for site_tag in lever_sites:
-        try:
-            lever_jobs = scrape_lever(site_tag)
-            all_jobs.extend(lever_jobs)
-        except Exception as e:
-            logger.exception(f"Error running Lever scraper for {site_tag}: {e}")
+            logger.info(f"Found {len(site_jobs)} jobs from '{name}'.")
+            all_jobs.extend(site_jobs)
 
-    logger.info(f"Finished all scrapers. Found {len(all_jobs)} jobs in total.")
+        except Exception as e:
+            # Use logger.exception to include traceback for debugging
+            logger.exception(f"Error scraping site '{name}' (Seed: {seed}): {e}")
+
+    logger.info(f"Finished running configured scrapers. Found {len(all_jobs)} jobs in total.")
     return all_jobs

@@ -43,6 +43,11 @@ import enum
 #     pass
 
 
+# Schema for the request body of the /create-checkout-session endpoint
+class CheckoutRequest(BaseModel):
+    price_id: str # The Stripe Price ID (e.g., price_xxxxxxxx)
+
+
 # Schema for the response of the /create-checkout-session endpoint
 class StripeCheckoutSession(BaseModel):
     session_id: str

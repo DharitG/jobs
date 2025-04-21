@@ -31,6 +31,22 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = int(os.getenv("QDRANT_PORT", 6333))
     QDRANT_API_KEY: str | None = os.getenv("QDRANT_API_KEY") # Added for Qdrant Cloud auth
 
+
+    # Model Names
+    SPACY_MODEL_NAME: str = os.getenv("SPACY_MODEL_NAME", "en_core_web_sm")
+    OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-4-turbo-preview")
+
+
+    # Stripe Price ID to Internal Tier Mapping 
+    # Example: STRIPE_PRICE_ID_TIER_MAP = '{"price_pro_monthly":"pro", "price_pro_annual":"pro", "price_elite_monthly":"elite"}'
+    # Use JSON format in the environment variable
+    # IMPORTANT: Replace placeholder keys with your actual Stripe Price IDs!
+    STRIPE_PRICE_ID_TIER_MAP_JSON: str = os.getenv("STRIPE_PRICE_ID_TIER_MAP_JSON", '{}') 
+
+    # External Services
+    SLACK_WEBHOOK_URL: str | None = os.getenv("SLACK_WEBHOOK_URL")
+
+
     class Config:
         case_sensitive = True
         env_file = ".env"

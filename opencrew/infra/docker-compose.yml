@@ -2,13 +2,14 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15
+    image: bitnami/postgresql:15 # Try Bitnami image
     container_name: jobbright_db
     environment:
       # Use environment variables for sensitive data in production
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-db}
+      # Bitnami images often use different env var names
+      POSTGRESQL_USERNAME: ${POSTGRES_USER:-user}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRESQL_DATABASE: ${POSTGRES_DB:-db}
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
@@ -16,7 +17,8 @@ services:
     networks:
       - jobbright_net
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-user} -d $${POSTGRES_DB:-db}"]
+        # Adjust healthcheck for Bitnami env vars
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRESQL_USERNAME:-user} -d $${POSTGRESQL_DATABASE:-db}"]
         interval: 10s
         timeout: 5s
         retries: 5
@@ -35,7 +37,7 @@ services:
         retries: 5
         
   qdrant:
-    image: qdrant/qdrant:latest # Use a specific version in production
+    image: qdrant/qdrant:v1.8.0 # Pin to specific version for production
     container_name: jobbright_qdrant
     ports:
       - "${QDRANT_PORT:-6333}:6333"
@@ -60,8 +62,8 @@ services:
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
       QDRANT_HOST: ${QDRANT_HOST:-qdrant}
       # SECRET_KEY: loaded from .env
-    # Command to run migrations then start the server
-    command: bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # Command to run migrations then start the server (Remove --reload for production)
+    command: bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -71,9 +73,8 @@ services:
         condition: service_healthy
       qdrant: # Qdrant might take a bit to start, simple depends_on for now
         condition: service_started
-    volumes:
-      # Mount code for development with hot-reloading (enabled in Dockerfile CMD)
-      - ../backend:/app
+    # volumes: # Disable code mounting for production builds
+    #   - ../backend:/app
     networks:
       - jobbright_net
 
@@ -97,10 +98,9 @@ services:
         condition: service_healthy
       qdrant:
          condition: service_started
-    volumes:
-       # Mount code for development consistency
-      - ../backend:/app
-    networks:
+    # volumes: # Disable code mounting for production builds
+    #   - ../backend:/app
+    networks: # Correct indentation
       - jobbright_net
 
 volumes:

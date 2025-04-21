@@ -763,13 +763,33 @@ class AutoSubmitter:
                     # Capture artifacts on failure - Ensure page object is valid
                     if page and not page.is_closed():
                         try:
-                            logger.info(f"Capturing failure artifacts for AppID {self.task.application_id}...")
-                            self.result.html = await page.content()
-                            self.result.screenshot = await page.screenshot(full_page=True)
-                            logger.info(f"Successfully captured HTML and Screenshot for AppID {self.task.application_id}.")
-                            # TODO: Add logic to upload these artifacts (e.g., to S3)
+                            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                            failure_dir = Path(tempfile.gettempdir()) / "autosubmit_failures"
+                            failure_dir.mkdir(parents=True, exist_ok=True)
+                            artifact_base_path = failure_dir / f"app_{self.task.application_id}_state_{self.result.state}_{timestamp}"
+
+                            logger.info(f"Capturing failure artifacts for AppID {self.task.application_id} to {artifact_base_path}...")
+
+                            # Save HTML
+                            html_content = await page.content()
+                            self.result.html = html_content # Keep in result for potential immediate use
+                            html_path = artifact_base_path.with_suffix(".html")
+                            with open(html_path, "w", encoding="utf-8") as f_html:
+                                f_html.write(html_content)
+                            logger.info(f"Saved failure HTML to: {html_path}")
+
+                            # Save Screenshot
+                            screenshot_bytes = await page.screenshot(full_page=True)
+                            self.result.screenshot = screenshot_bytes # Keep in result
+                            screenshot_path = artifact_base_path.with_suffix(".png")
+                            with open(screenshot_path, "wb") as f_png:
+                                f_png.write(screenshot_bytes)
+                            logger.info(f"Saved failure screenshot to: {screenshot_path}")
+
+                            # TODO: Add logic to upload these artifacts (e.g., to S3) from the saved paths if needed
+
                         except Exception as artifact_error:
-                            logger.error(f"AutoSubmitter: Failed to capture artifacts after error for AppID {self.task.application_id}: {artifact_error}", exc_info=True)
+                            logger.error(f"AutoSubmitter: Failed to capture/save artifacts after error for AppID {self.task.application_id}: {artifact_error}", exc_info=True)
                     else:
                          logger.warning(f"AutoSubmitter: Page closed or invalid, cannot capture artifacts for AppID {self.task.application_id}.")
 
