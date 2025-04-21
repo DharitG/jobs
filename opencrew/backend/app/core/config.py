@@ -32,12 +32,17 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str | None = os.getenv("QDRANT_API_KEY") # Added for Qdrant Cloud auth
 
 
-    # Model Names
+    # Azure OpenAI
+    AZURE_OPENAI_ENDPOINT: str | None = os.getenv("AZURE_OPENAI_ENDPOINT")
+    AZURE_OPENAI_API_KEY: str | None = os.getenv("AZURE_OPENAI_API_KEY")
+    AZURE_OPENAI_DEPLOYMENT_NAME: str | None = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME") # Your deployment name (e.g., gpt-4-turbo)
+    AZURE_OPENAI_API_VERSION: str | None = os.getenv("AZURE_OPENAI_API_VERSION") # e.g., "2023-05-15"
+
+    # Other Model Names
     SPACY_MODEL_NAME: str = os.getenv("SPACY_MODEL_NAME", "en_core_web_sm")
-    OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-4-turbo-preview")
+    # OPENAI_MODEL_NAME is deprecated, use AZURE_OPENAI_DEPLOYMENT_NAME
 
-
-    # Stripe Price ID to Internal Tier Mapping 
+    # Stripe Price ID to Internal Tier Mapping
     # Example: STRIPE_PRICE_ID_TIER_MAP = '{"price_pro_monthly":"pro", "price_pro_annual":"pro", "price_elite_monthly":"elite"}'
     # Use JSON format in the environment variable
     # IMPORTANT: Replace placeholder keys with your actual Stripe Price IDs!
