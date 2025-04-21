@@ -1,45 +1,60 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11-slim
+# ---- Builder Stage ----
+FROM python:3.11-slim as builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
 
-# Set the working directory in the container
+# Install build dependencies (if any, e.g., gcc for some packages)
+# RUN apt-get update && apt-get install -y --no-install-recommends gcc
+
 WORKDIR /app
 
-# Install system dependencies required by Playwright
-# Check Playwright docs for potentially needed dependencies on Debian (slim)
-# Example: RUN apt-get update && apt-get install -y --no-install-recommends libnss3 libatk1.0-0 libatk-bridge2.0-0 libx11-xcb1 libxcb-dri3-0 libdrm2 libgbm1 libxkbcommon0 libcups2 libxrandr2 libxcomposite1 libxcursor1 libxdamage1 libxi6 libxtst6 libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 && rm -rf /var/lib/apt/lists/*
+# Install Python dependencies
+COPY ./requirements.txt .
+RUN pip install --upgrade pip && \
+    pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+
+# Install Playwright and its browser dependencies
+# Using --with-deps might be necessary on slim images
 # RUN apt-get update && apt-get install -y --no-install-recommends wget gnupg ca-certificates && \
-#     wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-#     sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' && \
-#     apt-get update && \
-#     apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf libxss1 --no-install-recommends && \
+#     apt-get install -y --no-install-recommends libnss3 libatk1.0-0 libatk-bridge2.0-0 libx11-xcb1 libxcb-dri3-0 libdrm2 libgbm1 libxkbcommon0 libcups2 libxrandr2 libxcomposite1 libxcursor1 libxdamage1 libxi6 libxtst6 libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 && \
 #     rm -rf /var/lib/apt/lists/*
-# Note: Installing full Chrome is large. Check if Playwright's built-in browser download works first.
+# RUN playwright install-deps chromium # Use playwright's command if available and preferred
+RUN pip install --no-cache-dir playwright # Ensure playwright itself is installed
+RUN playwright install chromium # Install only chromium browser
 
-# Install Playwright browsers
-# RUN playwright install --with-deps chromium # Install only chromium with dependencies
-# This is often better done after installing python dependencies
+# ---- Final Stage ----
+FROM python:3.11-slim as final
 
-# Copy the requirements file into the container at /app
-COPY ./requirements.txt /app/requirements.txt
+# Create a non-root user
+ENV PYTHONUSERBASE=/home/appuser/.local
+RUN useradd --create-home --user-group --shell /bin/bash appuser
+USER appuser
+WORKDIR /home/appuser/app
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Copy installed dependencies from builder stage
+COPY --from=builder /wheels /wheels
+COPY --from=builder /app/requirements.txt .
+RUN pip install --no-index --find-links=/wheels -r requirements.txt
 
-# Install playwright browsers after python deps
-RUN playwright install chromium # Install only chromium
+# Copy Playwright browsers from builder stage
+# The playwright install command typically puts browsers in a user-specific cache.
+# Need to ensure the final user can access them. A common location is ~/.cache/ms-playwright
+# Adjust the source path if 'playwright install' in the builder stage saves them elsewhere.
+COPY --from=builder /root/.cache/ms-playwright /home/appuser/.cache/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
 
-# Copy the rest of the application code into the container at /app
-COPY . /app/
+# Copy application code
+COPY --chown=appuser:appuser . .
 
-# Expose port 8000 to the outside world
+# Expose the port the app runs on
 EXPOSE 8000
 
-# Define the command to run your app using uvicorn
-# Use 0.0.0.0 to allow connections from outside the container
-# Ensure your main FastAPI app instance is named "app" in "app.main"
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 
+# Set the entrypoint command
+# Run migrations automatically here if desired, e.g., using a script
+# CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

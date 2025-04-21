@@ -1,0 +1,30 @@
+# Git files
+.git
+.gitignore
+
+# VSCode
+.vscode
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local environment files
+.env*
+!.env.example
+
+# Docker files
+Dockerfile*
+.dockerignore
+
+# Test files (optional, depending on whether tests are run in container)
+# app/tests/
+
+# OS files
+.DS_Store
+
+# Alembic (if migrations run outside the container)
+# alembic.ini
+# alembic/

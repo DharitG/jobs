@@ -91,6 +91,18 @@ Core underlying systems, operational tasks, and compliance.
 
 ---
 
+
+---
+
+## 4. CI/CD & Near-Term Implementation Tasks
+
+Tasks related to setting up deployment pipelines and implementing core logic identified on 2025-04-21.
+
+*   ✅ **Backend CI Workflow:** Create GitHub Actions workflow (`.github/workflows/backend_ci.yml`) for linting (flake8, black) and testing (pytest) on pull requests.
+*   ✅ **Implement LLM Resume Tailoring:** Implement the actual LLM call logic in `services/resume_tailoring.py` (`tailor_content` function) using the configured Azure OpenAI client. (Basic objective tailoring implemented)
+*   ✅ **Frontend CI Workflow:** Create GitHub Actions workflow (`.github/workflows/frontend_ci.yml`) for linting and testing the frontend code (`opencrew/frontend`) on pull requests.
+*   ✅ **Refine Backend Dockerfile:** Optimize `opencrew/backend/Dockerfile` for production deployment (e.g., multi-stage build, smaller image, non-root user) suitable for Railway.
+
 ## 4. Testing
 
 *   ⬜ **Backend Unit/Integration Tests:** Write comprehensive Pytest tests for core services (autosubmit, optimize, matching, scraping), CRUD operations, security, and API endpoints.

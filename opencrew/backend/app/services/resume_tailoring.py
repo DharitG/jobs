@@ -292,25 +292,65 @@ def tailor_content(structured_data: StructuredResume, job_description: str) -> S
     - Selects/Keywords relevant Skills
     - Rewrites Experience/Project highlights
     """
-    # TODO: Implement LLM calls using LangChain and the initialized 'azure_llm' client.
-    # Create prompts for objective, skills matching, experience/project highlight rewriting.
-    # Use the job description and extracted resume sections as context.
-    # Ensure calls include `model=settings.AZURE_OPENAI_DEPLOYMENT_NAME`.
-    # Update the structured_data object with the tailored content.
-    logger.info("Tailoring content using Azure LLM (placeholder)...")
+    # TODO: Implement LLM calls for skills matching, experience/project highlight rewriting.
+    # TODO: Consider using LangChain for more complex prompt management and output parsing.
+    logger.info("Tailoring objective using Azure LLM...")
 
-    if not azure_llm:
-        logger.warning("Azure LLM client not initialized. Skipping tailoring.")
+    if not azure_llm or not settings.AZURE_OPENAI_DEPLOYMENT_NAME:
+        logger.warning("Azure LLM client or deployment name not configured. Skipping tailoring.")
         return structured_data
 
-    # Example placeholder modification (Needs actual LLM call):
-    if structured_data.basic and structured_data.basic.name: # Check if name exists
-        structured_data.objective = f"Tailored objective for {structured_data.basic.name} based on job description (placeholder)."
-    else:
-         structured_data.objective = "Tailored objective based on job description (placeholder)."
+    try:
+        # --- Tailor Objective ---
+        current_objective = structured_data.objective or "No objective provided."
+        system_prompt = "You are an expert resume writer. Rewrite the provided resume objective/summary to be concise, impactful, and highly relevant to the target job description. Focus on aligning the candidate's key qualifications with the job requirements."
+        user_prompt = f"""
+        Rewrite the following resume objective/summary based on the target job description.
+
+        Current Objective/Summary:
+        ---
+        {current_objective}
+        ---
+
+        Target Job Description:
+        ---
+        {job_description}
+        ---
+
+        Rewritten Objective/Summary (Return ONLY the rewritten text):
+        """
+
+        response = azure_llm.chat.completions.create(
+            model=settings.AZURE_OPENAI_DEPLOYMENT_NAME, # Specify the deployment name
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=150
+        )
+
+        if response.choices and response.choices[0].message and response.choices[0].message.content:
+            tailored_objective = response.choices[0].message.content.strip()
+            structured_data.objective = tailored_objective
+            logger.info(f"Successfully tailored objective.")
+        else:
+            logger.warning("LLM response for objective tailoring was empty or invalid.")
+
+        # --- TODO: Tailor Skills (e.g., select top N skills matching JD) ---
+        # --- TODO: Tailor Experiences/Projects (e.g., rewrite bullet points) ---
+
+    except openai.APIError as e:
+        logger.error(f"Azure OpenAI API returned an API Error: {e}")
+    except openai.APIConnectionError as e:
+        logger.error(f"Failed to connect to Azure OpenAI API: {e}")
+    except openai.RateLimitError as e:
+        logger.error(f"Azure OpenAI API request exceeded rate limit: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during LLM tailoring: {e}", exc_info=True)
 
 
-    logger.info("Content tailoring complete (placeholder).")
+    logger.info("Content tailoring attempt complete.")
     return structured_data
 
 # --- Main Service Function ---

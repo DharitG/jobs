@@ -1,0 +1,40 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'opencrew/backend/**'
+      - '.github/workflows/backend_ci.yml'
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./opencrew/backend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # Adjust if your backend uses a different version
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        # Install testing and linting tools if not already in requirements.txt
+        pip install pytest flake8 black
+
+    - name: Lint with flake8
+      run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: Check formatting with black
+      run: black . --check
+
+    - name: Run tests with pytest
+      run: pytest app/tests # Adjust path if tests are located elsewhere
