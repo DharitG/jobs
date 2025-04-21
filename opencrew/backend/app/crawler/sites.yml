@@ -145,3 +145,1311 @@
   mode: api # Use Lever API
   seeds:
     - palantir # Site tag
+
+# ----- START: Appended from Master Company-ATS-Identifier Table -----
+# --- Additional Greenhouse Sites (using API) ---
+- name: 1Password
+  source: greenhouse
+  mode: api
+  seeds:
+    - 1password
+- name: Abnormal Security
+  source: greenhouse
+  mode: api
+  seeds:
+    - abnormalsecurity
+- name: Ada
+  source: greenhouse
+  mode: api
+  seeds:
+    - adasupport
+- name: Acorns
+  source: greenhouse
+  mode: api
+  seeds:
+    - acorns
+- name: Airtable
+  source: greenhouse
+  mode: api
+  seeds:
+    - airtable
+- name: Algolia
+  source: greenhouse
+  mode: api
+  seeds:
+    - algolia
+- name: Amplitude
+  source: greenhouse
+  mode: api
+  seeds:
+    - amplitude
+- name: Affirm (Greenhouse) # Clarifying
+  source: greenhouse
+  mode: api
+  seeds:
+    - affirm
+- name: Anduril
+  source: greenhouse
+  mode: api
+  seeds:
+    - andurilindustries
+- name: AngelList
+  source: greenhouse
+  mode: api
+  seeds:
+    - angellist
+- name: Appian
+  source: greenhouse
+  mode: api
+  seeds:
+    - appian
+- name: Applied Intuition
+  source: greenhouse
+  mode: api
+  seeds:
+    - appliedintuition
+- name: Atlassian
+  source: greenhouse
+  mode: api
+  seeds:
+    - atlassian
+- name: Atlan
+  source: greenhouse
+  mode: api
+  seeds:
+    - atlan
+- name: Aurora Solar
+  source: greenhouse
+  mode: api
+  seeds:
+    - aurorasolar
+- name: Benchling
+  source: greenhouse
+  mode: api
+  seeds:
+    - benchling
+- name: BetterUp
+  source: greenhouse
+  mode: api
+  seeds:
+    - betterup
+- name: BILL
+  source: greenhouse
+  mode: api
+  seeds:
+    - billcom
+- name: Blend
+  source: greenhouse
+  mode: api
+  seeds:
+    - blendlabsinc
+- name: Braze
+  source: greenhouse
+  mode: api
+  seeds:
+    - braze
+# Note: Brex already listed under Lever, skipping Greenhouse entry to avoid ambiguity unless confirmed.
+# Note: Canva already listed under Lever, skipping Greenhouse entry.
+- name: Carta
+  source: greenhouse
+  mode: api
+  seeds:
+    - carta
+- name: Cato Networks
+  source: greenhouse
+  mode: api
+  seeds:
+    - catonetworks
+- name: Cedar
+  source: greenhouse
+  mode: api
+  seeds:
+    - cedar
+- name: Chainalysis
+  source: greenhouse
+  mode: api
+  seeds:
+    - chainalysis
+- name: Checkr
+  source: greenhouse
+  mode: api
+  seeds:
+    - checkr
+- name: Checkout.com
+  source: greenhouse
+  mode: api
+  seeds:
+    - checkoutcom
+- name: Chime
+  source: greenhouse
+  mode: api
+  seeds:
+    - chime
+- name: Circle
+  source: greenhouse
+  mode: api
+  seeds:
+    - circleinternetfinancial
+- name: ClickUp
+  source: greenhouse
+  mode: api
+  seeds:
+    - clickup
+- name: CloudBees
+  source: greenhouse
+  mode: api
+  seeds:
+    - cloudbees
+- name: Cloudflare
+  source: greenhouse
+  mode: api
+  seeds:
+    - cloudflare
+- name: Cockroach Labs
+  source: greenhouse
+  mode: api
+  seeds:
+    - cockroachlabs
+- name: Code42
+  source: greenhouse
+  mode: api
+  seeds:
+    - code42
+- name: Cohesity
+  source: greenhouse
+  mode: api
+  seeds:
+    - cohesity
+- name: Collibra
+  source: greenhouse
+  mode: api
+  seeds:
+    - collibra
+- name: Confluent
+  source: greenhouse
+  mode: api
+  seeds:
+    - confluent
+- name: Databricks
+  source: greenhouse
+  mode: api
+  seeds:
+    - databricks
+- name: Dataiku
+  source: greenhouse
+  mode: api
+  seeds:
+    - dataiku
+- name: DataRobot
+  source: greenhouse
+  mode: api
+  seeds:
+    - datarobot
+- name: Deel
+  source: greenhouse
+  mode: api
+  seeds:
+    - deel
+- name: Descript
+  source: greenhouse
+  mode: api
+  seeds:
+    - descript
+- name: Discord
+  source: greenhouse
+  mode: api
+  seeds:
+    - discord
+- name: Docker
+  source: greenhouse
+  mode: api
+  seeds:
+    - docker
+- name: DoorDash
+  source: greenhouse
+  mode: api
+  seeds:
+    - doordash
+- name: Druva
+  source: greenhouse
+  mode: api
+  seeds:
+    - druva
+- name: Fivetran
+  source: greenhouse
+  mode: api
+  seeds:
+    - fivetran
+- name: Flexport
+  source: greenhouse
+  mode: api
+  seeds:
+    - flexport
+# Note: Figma already listed under Greenhouse.
+- name: GitGuardian
+  source: greenhouse
+  mode: api
+  seeds:
+    - gitguardian
+- name: Gong
+  source: greenhouse
+  mode: api
+  seeds:
+    - gongio
+- name: GoPuff
+  source: greenhouse
+  mode: api
+  seeds:
+    - gopuff
+- name: Grammarly
+  source: greenhouse
+  mode: api
+  seeds:
+    - grammarly
+- name: Gusto
+  source: greenhouse
+  mode: api
+  seeds:
+    - gusto
+- name: HashiCorp
+  source: greenhouse
+  mode: api
+  seeds:
+    - hashicorp
+- name: Harness
+  source: greenhouse
+  mode: api
+  seeds:
+    - harness
+- name: Hugging Face
+  source: greenhouse
+  mode: api
+  seeds:
+    - huggingface
+- name: Instacart
+  source: greenhouse
+  mode: api
+  seeds:
+    - instacart
+- name: Ironclad
+  source: greenhouse
+  mode: api
+  seeds:
+    - ironclad
+- name: Justworks
+  source: greenhouse
+  mode: api
+  seeds:
+    - justworks
+- name: K Health
+  source: greenhouse
+  mode: api
+  seeds:
+    - khealth
+- name: Klaviyo
+  source: greenhouse
+  mode: api
+  seeds:
+    - klaviyo
+- name: Lacework
+  source: greenhouse
+  mode: api
+  seeds:
+    - lacework
+- name: LaunchDarkly
+  source: greenhouse
+  mode: api
+  seeds:
+    - launchdarkly
+- name: Lattice
+  source: greenhouse
+  mode: api
+  seeds:
+    - lattice
+- name: LendInvest
+  source: greenhouse
+  mode: api
+  seeds:
+    - lendinvest
+- name: Looker
+  source: greenhouse
+  mode: api
+  seeds:
+    - looker
+- name: Materialize
+  source: greenhouse
+  mode: api
+  seeds:
+    - materialize
+- name: Mendix
+  source: greenhouse
+  mode: api
+  seeds:
+    - mendix
+- name: Miro
+  source: greenhouse
+  mode: api
+  seeds:
+    - miro
+- name: MongoDB
+  source: greenhouse
+  mode: api
+  seeds:
+    - mongodb
+- name: Moveworks
+  source: greenhouse
+  mode: api
+  seeds:
+    - moveworks
+- name: MuleSoft
+  source: greenhouse
+  mode: api
+  seeds:
+    - mulesoft
+- name: Netlify
+  source: greenhouse
+  mode: api
+  seeds:
+    - netlify
+# Note: Notion already listed under Greenhouse.
+- name: Nuro
+  source: greenhouse
+  mode: api
+  seeds:
+    - nuro
+- name: Nvidia
+  source: greenhouse
+  mode: api
+  seeds:
+    - nvidia
+- name: Okta
+  source: greenhouse
+  mode: api
+  seeds:
+    - okta
+- name: OneTrust
+  source: greenhouse
+  mode: api
+  seeds:
+    - onetrust
+- name: Outreach
+  source: greenhouse
+  mode: api
+  seeds:
+    - outreach
+- name: PagerDuty
+  source: greenhouse
+  mode: api
+  seeds:
+    - pagerduty
+- name: Palantir (Greenhouse) # Clarifying as Palantir Tech listed under Lever
+  source: greenhouse
+  mode: api
+  seeds:
+    - palantir
+- name: PandaDoc
+  source: greenhouse
+  mode: api
+  seeds:
+    - pandadoc
+- name: Patreon
+  source: greenhouse
+  mode: api
+  seeds:
+    - patreon
+- name: PayPal
+  source: greenhouse
+  mode: api
+  seeds:
+    - paypal
+- name: Paxos
+  source: greenhouse
+  mode: api
+  seeds:
+    - paxos
+- name: Personio
+  source: greenhouse
+  mode: api
+  seeds:
+    - personio
+# Note: Pinterest already listed under Greenhouse.
+# Note: Plaid already listed under Lever, skipping Greenhouse entry.
+- name: Postman
+  source: greenhouse
+  mode: api
+  seeds:
+    - postman
+- name: Procore
+  source: greenhouse
+  mode: api
+  seeds:
+    - procore
+- name: Quantum Metric
+  source: greenhouse
+  mode: api
+  seeds:
+    - quantummetric
+- name: Quora
+  source: greenhouse
+  mode: api
+  seeds:
+    - quora
+# Note: Ramp already listed under Lever, skipping Greenhouse entry.
+# Note: Reddit already listed under Lever, skipping Greenhouse entry.
+- name: Redis Labs
+  source: greenhouse
+  mode: api
+  seeds:
+    - redislabs
+- name: Replit
+  source: greenhouse
+  mode: api
+  seeds:
+    - replit
+- name: Retool
+  source: greenhouse
+  mode: api
+  seeds:
+    - retool
+- name: Rippling (Greenhouse) # Clarifying
+  source: greenhouse
+  mode: api
+  seeds:
+    - rippling
+- name: Robinhood
+  source: greenhouse
+  mode: api
+  seeds:
+    - robinhood
+- name: Roblox
+  source: greenhouse
+  mode: api
+  seeds:
+    - roblox
+- name: Rubrik
+  source: greenhouse
+  mode: api
+  seeds:
+    - rubrik
+- name: Samsara
+  source: greenhouse
+  mode: api
+  seeds:
+    - samsara
+# Note: Scale AI already listed under Lever, skipping Greenhouse entry.
+- name: Segment
+  source: greenhouse
+  mode: api
+  seeds:
+    - segment
+- name: SentinelOne
+  source: greenhouse
+  mode: api
+  seeds:
+    - sentinelone
+- name: Sentry
+  source: greenhouse
+  mode: api
+  seeds:
+    - sentry
+- name: ServiceTitan
+  source: greenhouse
+  mode: api
+  seeds:
+    - servicetitan
+# Note: Shopify already listed under Lever, skipping Greenhouse entry.
+- name: Slack
+  source: greenhouse
+  mode: api
+  seeds:
+    - slack
+- name: Slice
+  source: greenhouse
+  mode: api
+  seeds:
+    - slice
+- name: Snap
+  source: greenhouse
+  mode: api
+  seeds:
+    - snap
+- name: Snowflake
+  source: greenhouse
+  mode: api
+  seeds:
+    - snowflake
+- name: SonarSource
+  source: greenhouse
+  mode: api
+  seeds:
+    - sonarsource
+- name: SpotOn
+  source: greenhouse
+  mode: api
+  seeds:
+    - spoton
+- name: Spotify
+  source: greenhouse
+  mode: api
+  seeds:
+    - spotify
+- name: Sprinklr
+  source: greenhouse
+  mode: api
+  seeds:
+    - sprinklr
+# Note: Square already listed under Greenhouse.
+# Note: Stripe already listed under Greenhouse.
+- name: Sumo Logic
+  source: greenhouse
+  mode: api
+  seeds:
+    - sumologic
+- name: Tanium
+  source: greenhouse
+  mode: api
+  seeds:
+    - tanium
+- name: ThoughtSpot
+  source: greenhouse
+  mode: api
+  seeds:
+    - thoughtspot
+- name: Thrive Market
+  source: greenhouse
+  mode: api
+  seeds:
+    - thrivemarket
+- name: Tile
+  source: greenhouse
+  mode: api
+  seeds:
+    - tile
+- name: Toptal
+  source: greenhouse
+  mode: api
+  seeds:
+    - toptal
+- name: Toast
+  source: greenhouse
+  mode: api
+  seeds:
+    - toast
+- name: Treasury Prime
+  source: greenhouse
+  mode: api
+  seeds:
+    - treasuryprime
+- name: TripActions (Navan)
+  source: greenhouse
+  mode: api
+  seeds:
+    - tripactions
+- name: Truework
+  source: greenhouse
+  mode: api
+  seeds:
+    - truework
+- name: TuSimple
+  source: greenhouse
+  mode: api
+  seeds:
+    - tusimple
+# Note: Twilio already listed under Greenhouse.
+# Note: Twitch already listed under Lever, skipping Greenhouse entry.
+- name: Twitter (X)
+  source: greenhouse
+  mode: api
+  seeds:
+    - twitter
+- name: Uber
+  source: greenhouse
+  mode: api
+  seeds:
+    - uber
+- name: Udemy
+  source: greenhouse
+  mode: api
+  seeds:
+    - udemy
+- name: Upstart
+  source: greenhouse
+  mode: api
+  seeds:
+    - upstart
+- name: Vanta
+  source: greenhouse
+  mode: api
+  seeds:
+    - vanta
+- name: Verkada
+  source: greenhouse
+  mode: api
+  seeds:
+    - verkada
+- name: Vercel (Greenhouse) # Clarifying
+  source: greenhouse
+  mode: api
+  seeds:
+    - vercel
+- name: Virgin Hyperloop
+  source: greenhouse
+  mode: api
+  seeds:
+    - virginhyperloop
+- name: Vise
+  source: greenhouse
+  mode: api
+  seeds:
+    - vise
+- name: Vista
+  source: greenhouse
+  mode: api
+  seeds:
+    - vista
+- name: VMware
+  source: greenhouse
+  mode: api
+  seeds:
+    - vmware
+- name: Wealthsimple
+  source: greenhouse
+  mode: api
+  seeds:
+    - wealthsimple
+- name: Webflow
+  source: greenhouse
+  mode: api
+  seeds:
+    - webflow
+- name: Weights & Biases
+  source: greenhouse
+  mode: api
+  seeds:
+    - weightsandbiases
+- name: Whimsical
+  source: greenhouse
+  mode: api
+  seeds:
+    - whimsical
+- name: Wise
+  source: greenhouse
+  mode: api
+  seeds:
+    - wise
+- name: Wiz
+  source: greenhouse
+  mode: api
+  seeds:
+    - wiz
+- name: Workday (Greenhouse) # Clarifying
+  source: greenhouse
+  mode: api
+  seeds:
+    - workday
+- name: Yext
+  source: greenhouse
+  mode: api
+  seeds:
+    - yext
+- name: Yugabyte
+  source: greenhouse
+  mode: api
+  seeds:
+    - yugabyte
+- name: Zapier
+  source: greenhouse
+  mode: api
+  seeds:
+    - zapier
+- name: Zego
+  source: greenhouse
+  mode: api
+  seeds:
+    - zego
+- name: Zscaler
+  source: greenhouse
+  mode: api
+  seeds:
+    - zscaler
+- name: Zola
+  source: greenhouse
+  mode: api
+  seeds:
+    - zola
+- name: Zoom
+  source: greenhouse
+  mode: api
+  seeds:
+    - zoom
+- name: Zuora
+  source: greenhouse
+  mode: api
+  seeds:
+    - zuora
+
+# --- Additional Lever Sites (using API) ---
+- name: 6Sense
+  source: lever
+  mode: api
+  seeds:
+    - 6sense
+- name: Affirm (Lever) # Clarifying
+  source: lever
+  mode: api
+  seeds:
+    - affirm
+- name: AgentSync
+  source: lever
+  mode: api
+  seeds:
+    - agentsync
+- name: Airbyte
+  source: lever
+  mode: api
+  seeds:
+    - airbyte
+- name: Alloy
+  source: lever
+  mode: api
+  seeds:
+    - alloy
+- name: Altruist
+  source: lever
+  mode: api
+  seeds:
+    - altruist
+- name: Anaconda
+  source: lever
+  mode: api
+  seeds:
+    - anaconda
+# Note: Anthropic already listed under Lever.
+- name: Anyscale
+  source: lever
+  mode: api
+  seeds:
+    - anyscale
+- name: Aptible
+  source: lever
+  mode: api
+  seeds:
+    - aptible
+- name: Arctic Wolf
+  source: lever
+  mode: api
+  seeds:
+    - arcticwolf
+- name: AssemblyAI
+  source: lever
+  mode: api
+  seeds:
+    - assemblyai
+- name: AuditBoard
+  source: lever
+  mode: api
+  seeds:
+    - auditboard
+- name: Aurora
+  source: lever
+  mode: api
+  seeds:
+    - aurora
+- name: Ava Labs
+  source: lever
+  mode: api
+  seeds:
+    - avalabs
+- name: Bill.com (Lever) # Clarifying
+  source: lever
+  mode: api
+  seeds:
+    - billcom
+- name: Bolt
+  source: lever
+  mode: api
+  seeds:
+    - bolt
+- name: BrowserStack
+  source: lever
+  mode: api
+  seeds:
+    - browserstack
+- name: Buildkite
+  source: lever
+  mode: api
+  seeds:
+    - buildkite
+- name: Calm
+  source: lever
+  mode: api
+  seeds:
+    - calm
+- name: Cameo
+  source: lever
+  mode: api
+  seeds:
+    - cameo
+- name: CarGurus
+  source: lever
+  mode: api
+  seeds:
+    - cargurus
+- name: Capchase
+  source: lever
+  mode: api
+  seeds:
+    - capchase
+- name: Chronosphere
+  source: lever
+  mode: api
+  seeds:
+    - chronosphere
+- name: Clearwater Analytics
+  source: lever
+  mode: api
+  seeds:
+    - clearwateranalytics
+- name: Coda
+  source: lever
+  mode: api
+  seeds:
+    - coda
+- name: Current
+  source: lever
+  mode: api
+  seeds:
+    - current
+- name: Cresta
+  source: lever
+  mode: api
+  seeds:
+    - cresta
+- name: Crunchbase
+  source: lever
+  mode: api
+  seeds:
+    - crunchbase
+- name: Dandy
+  source: lever
+  mode: api
+  seeds:
+    - dandy
+- name: Deliverr
+  source: lever
+  mode: api
+  seeds:
+    - deliverr
+- name: Doximity
+  source: lever
+  mode: api
+  seeds:
+    - doximity
+- name: Earnin
+  source: lever
+  mode: api
+  seeds:
+    - earnin
+- name: Envoy
+  source: lever
+  mode: api
+  seeds:
+    - envoy
+- name: Ethos
+  source: lever
+  mode: api
+  seeds:
+    - ethoslife
+- name: Everlaw
+  source: lever
+  mode: api
+  seeds:
+    - everlaw
+- name: Everlywell
+  source: lever
+  mode: api
+  seeds:
+    - everlywell
+- name: Expensify
+  source: lever
+  mode: api
+  seeds:
+    - expensify
+- name: Faire
+  source: lever
+  mode: api
+  seeds:
+    - faire
+- name: Fastly
+  source: lever
+  mode: api
+  seeds:
+    - fastly
+- name: Flock Safety
+  source: lever
+  mode: api
+  seeds:
+    - flocksafety
+- name: Foursquare
+  source: lever
+  mode: api
+  seeds:
+    - foursquare
+- name: G2
+  source: lever
+  mode: api
+  seeds:
+    - g2
+- name: Gainsight
+  source: lever
+  mode: api
+  seeds:
+    - gainsight
+- name: Getir
+  source: lever
+  mode: api
+  seeds:
+    - getir
+- name: GitHub
+  source: lever
+  mode: api
+  seeds:
+    - github
+- name: Grafana Labs
+  source: lever
+  mode: api
+  seeds:
+    - grafana
+- name: Guild Education
+  source: lever
+  mode: api
+  seeds:
+    - guildeducation
+- name: H1
+  source: lever
+  mode: api
+  seeds:
+    - h1
+- name: HackerOne
+  source: lever
+  mode: api
+  seeds:
+    - hackerone
+- name: Heap
+  source: lever
+  mode: api
+  seeds:
+    - heap
+- name: Hinge Health
+  source: lever
+  mode: api
+  seeds:
+    - hingehealth
+- name: Hopin
+  source: lever
+  mode: api
+  seeds:
+    - hopin
+- name: Humane
+  source: lever
+  mode: api
+  seeds:
+    - humane
+- name: Imperfect Foods
+  source: lever
+  mode: api
+  seeds:
+    - imperfectfoods
+- name: InfluxData
+  source: lever
+  mode: api
+  seeds:
+    - influxdata
+- name: Intercom (Lever) # Clarifying
+  source: lever
+  mode: api
+  seeds:
+    - intercom
+- name: Jasper
+  source: lever
+  mode: api
+  seeds:
+    - jasper
+- name: JumpCloud
+  source: lever
+  mode: api
+  seeds:
+    - jumpcloud
+- name: KeepTruckin
+  source: lever
+  mode: api
+  seeds:
+    - keeptruckin
+- name: Komodo Health
+  source: lever
+  mode: api
+  seeds:
+    - komodohealth
+- name: Kong
+  source: lever
+  mode: api
+  seeds:
+    - kong
+# Note: Lyft already listed under Lever.
+- name: MasterClass
+  source: lever
+  mode: api
+  seeds:
+    - masterclass
+- name: Medallia
+  source: lever
+  mode: api
+  seeds:
+    - medallia
+- name: MessageBird
+  source: lever
+  mode: api
+  seeds:
+    - messagebird
+- name: Metabase
+  source: lever
+  mode: api
+  seeds:
+    - metabase
+- name: Modern Treasury
+  source: lever
+  mode: api
+  seeds:
+    - moderntreasury
+- name: Motive
+  source: lever
+  mode: api
+  seeds:
+    - motive
+- name: N26
+  source: lever
+  mode: api
+  seeds:
+    - n26
+- name: Nextdoor
+  source: lever
+  mode: api
+  seeds:
+    - nextdoor
+- name: Nylas
+  source: lever
+  mode: api
+  seeds:
+    - nylas
+- name: O'Reilly Media
+  source: lever
+  mode: api
+  seeds:
+    - oreilly
+- name: One Medical
+  source: lever
+  mode: api
+  seeds:
+    - onemedical
+- name: Pendo
+  source: lever
+  mode: api
+  seeds:
+    - pendo
+- name: Planet
+  source: lever
+  mode: api
+  seeds:
+    - planet
+- name: Preset
+  source: lever
+  mode: api
+  seeds:
+    - preset
+- name: Privacy.com
+  source: lever
+  mode: api
+  seeds:
+    - privacy
+- name: Productboard
+  source: lever
+  mode: api
+  seeds:
+    - productboard
+- name: Relativity
+  source: lever
+  mode: api
+  seeds:
+    - relativity
+- name: Remote
+  source: lever
+  mode: api
+  seeds:
+    - remote
+- name: Rent the Runway
+  source: lever
+  mode: api
+  seeds:
+    - renttherunway
+- name: Rigetti Computing
+  source: lever
+  mode: api
+  seeds:
+    - rigetti
+- name: Salesloft
+  source: lever
+  mode: api
+  seeds:
+    - salesloft
+- name: Seismic
+  source: lever
+  mode: api
+  seeds:
+    - seismic
+- name: Sendbird
+  source: lever
+  mode: api
+  seeds:
+    - sendbird
+- name: Sense
+  source: lever
+  mode: api
+  seeds:
+    - sense
+- name: Shippo
+  source: lever
+  mode: api
+  seeds:
+    - goshippo
+- name: Skydio
+  source: lever
+  mode: api
+  seeds:
+    - skydio
+- name: SoFi
+  source: lever
+  mode: api
+  seeds:
+    - sofi
+- name: Sourcegraph
+  source: lever
+  mode: api
+  seeds:
+    - sourcegraph
+- name: Starburst
+  source: lever
+  mode: api
+  seeds:
+    - starburst
+- name: Stitch Fix
+  source: lever
+  mode: api
+  seeds:
+    - stitchfix
+- name: Temporal Technologies
+  source: lever
+  mode: api
+  seeds:
+    - temporal
+- name: Tessian
+  source: lever
+  mode: api
+  seeds:
+    - tessian
+- name: Thumbtack
+  source: lever
+  mode: api
+  seeds:
+    - thumbtack
+- name: Typeform
+  source: lever
+  mode: api
+  seeds:
+    - typeform
+- name: Udacity
+  source: lever
+  mode: api
+  seeds:
+    - udacity
+- name: Unacademy
+  source: lever
+  mode: api
+  seeds:
+    - unacademy
+- name: Unqork
+  source: lever
+  mode: api
+  seeds:
+    - unqork
+- name: Upgrade
+  source: lever
+  mode: api
+  seeds:
+    - upgrade
+- name: UserTesting
+  source: lever
+  mode: api
+  seeds:
+    - usertesting
+- name: Vercel (Lever) # Clarifying
+  source: lever
+  mode: api
+  seeds:
+    - vercel
+- name: Via
+  source: lever
+  mode: api
+  seeds:
+    - ridewithvia
+- name: Vimeo
+  source: lever
+  mode: api
+  seeds:
+    - vimeo
+- name: Vital Farms
+  source: lever
+  mode: api
+  seeds:
+    - vitalfarms
+- name: Waymo
+  source: lever
+  mode: api
+  seeds:
+    - waymo
+- name: Whatnot
+  source: lever
+  mode: api
+  seeds:
+    - whatnot
+- name: Whoop
+  source: lever
+  mode: api
+  seeds:
+    - whoop
+- name: Workato
+  source: lever
+  mode: api
+  seeds:
+    - workato
+- name: Yelp
+  source: lever
+  mode: api
+  seeds:
+    - yelp
+- name: Zipline
+  source: lever
+  mode: api
+  seeds:
+    - flyzipline
+- name: Zocdoc
+  source: lever
+  mode: api
+  seeds:
+    - zocdoc
+- name: Zynga
+  source: lever
+  mode: api
+  seeds:
+    - zynga
+
+# ----- END: Appended from Master Company-ATS-Identifier Table -----
