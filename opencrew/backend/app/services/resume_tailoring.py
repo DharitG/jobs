@@ -28,7 +28,46 @@ else:
     azure_llm = None
 
 
-# --- Helper Functions ---
+# --- LLM Helper ---
+
+def _call_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7, max_tokens: int = 200) -> Optional[str]:
+    """Helper function to call the Azure OpenAI API."""
+    if not azure_llm or not settings.AZURE_OPENAI_DEPLOYMENT_NAME:
+        logger.warning("Azure LLM client or deployment name not configured. Cannot call LLM.")
+        return None
+
+    try:
+        logger.debug(f"Calling LLM. System Prompt: {system_prompt[:100]}... User Prompt: {user_prompt[:100]}...")
+        response = azure_llm.chat.completions.create(
+            model=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+
+        if response.choices and response.choices[0].message and response.choices[0].message.content:
+            logger.debug("LLM call successful.")
+            return response.choices[0].message.content.strip()
+        else:
+            logger.warning("LLM response was empty or invalid.")
+            return None
+
+    except openai.APIError as e:
+        logger.error(f"Azure OpenAI API returned an API Error: {e}")
+    except openai.APIConnectionError as e:
+        logger.error(f"Failed to connect to Azure OpenAI API: {e}")
+    except openai.RateLimitError as e:
+        logger.error(f"Azure OpenAI API request exceeded rate limit: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during LLM call: {e}", exc_info=True)
+
+    return None
+
+
+# --- Preprocessing & Section Identification Helpers ---
 
 # Constants for preprocessing
 Y_TOLERANCE_FACTOR = 0.5 # Allow lines whose y-coords differ by this factor of the item height
@@ -510,46 +549,110 @@ def tailor_content(structured_data: StructuredResume, job_description: str) -> S
     try:
         # --- Tailor Objective ---
         current_objective = structured_data.objective or "No objective provided."
-        system_prompt = "You are an expert resume writer. Rewrite the provided resume objective/summary to be concise, impactful, and highly relevant to the target job description. Focus on aligning the candidate's key qualifications with the job requirements."
-        user_prompt = f"""
-        Rewrite the following resume objective/summary based on the target job description.
+        obj_system_prompt = "You are an expert resume writer. Rewrite the provided resume objective/summary to be concise, impactful, and highly relevant to the target job description. Focus on aligning the candidate's key qualifications with the job requirements."
+        obj_user_prompt = f"""Rewrite the following resume objective/summary based on the target job description.
 
-        Current Objective/Summary:
-        ---
-        {current_objective}
-        ---
+Current Objective/Summary:
+---
+{current_objective}
+---
 
-        Target Job Description:
-        ---
-        {job_description}
-        ---
+Target Job Description:
+---
+{job_description}
+---
 
-        Rewritten Objective/Summary (Return ONLY the rewritten text):
-        """
+Rewritten Objective/Summary (Return ONLY the rewritten text):"""
 
-        response = azure_llm.chat.completions.create(
-            model=settings.AZURE_OPENAI_DEPLOYMENT_NAME, # Specify the deployment name
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=150
-        )
-
-        if response.choices and response.choices[0].message and response.choices[0].message.content:
-            tailored_objective = response.choices[0].message.content.strip()
+        tailored_objective = _call_llm(obj_system_prompt, obj_user_prompt, max_tokens=150)
+        if tailored_objective:
             structured_data.objective = tailored_objective
-            logger.info(f"Successfully tailored objective.")
+            logger.info("Successfully tailored objective.")
         else:
-            logger.warning("LLM response for objective tailoring was empty or invalid.")
+            logger.warning("Failed to tailor objective or LLM response was empty.")
 
-        # --- TODO: Tailor Skills (e.g., select top N skills matching JD) ---
-        # --- TODO: Tailor Experiences/Projects (e.g., rewrite bullet points) ---
 
-    except openai.APIError as e:
-        logger.error(f"Azure OpenAI API returned an API Error: {e}")
-    except openai.APIConnectionError as e:
+        # --- Tailor Skills ---
+        logger.info("Tailoring skills using Azure LLM...")
+        if structured_data.skills:
+            current_skills_str = ", ".join([skill.name for skill in structured_data.skills])
+            skills_system_prompt = "You are a resume analysis assistant. Analyze the provided skill list and the target job description. Identify and return ONLY a comma-separated list of the most relevant skills from the original list that align strongly with the job requirements. Prioritize skills explicitly mentioned or strongly implied in the job description."
+            skills_user_prompt = f"""Analyze the following list of skills based on the target job description and return a comma-separated list of the most relevant skills.
+
+Current Skills:
+---
+{current_skills_str}
+---
+
+Target Job Description:
+---
+{job_description}
+---
+
+Most Relevant Skills (Return ONLY a comma-separated list):"""
+
+            tailored_skills_str = _call_llm(skills_system_prompt, skills_user_prompt, max_tokens=200)
+            if tailored_skills_str:
+                # Parse the response and update the skills list
+                relevant_skill_names = [s.strip() for s in tailored_skills_str.split(',') if s.strip()]
+                # Replace original skills with the tailored list (simple approach)
+                structured_data.skills = [SkillItem(name=name, category="Relevant Skills") for name in relevant_skill_names]
+                logger.info(f"Successfully tailored skills. Identified {len(structured_data.skills)} relevant skills.")
+            else:
+                logger.warning("Failed to tailor skills or LLM response was empty.")
+        else:
+            logger.info("No skills found in structured data to tailor.")
+
+
+        # --- Tailor Experiences ---
+        logger.info("Tailoring experience descriptions using Azure LLM...")
+        if structured_data.experiences:
+            updated_experiences = []
+            for i, exp in enumerate(structured_data.experiences):
+                logger.info(f"Tailoring experience item {i+1}/{len(structured_data.experiences)}: {exp.title} at {exp.company}")
+                current_desc = exp.description or "No description provided."
+                if not current_desc or current_desc == "No description provided.":
+                     logger.warning(f"Skipping experience item {i+1} due to missing description.")
+                     updated_experiences.append(exp) # Keep original if no description
+                     continue
+
+                exp_system_prompt = "You are an expert resume writer specializing in tailoring experience bullet points. Rewrite the provided bullet points to highlight achievements and responsibilities most relevant to the target job description, using action verbs and quantifying results where possible. Maintain the original number of bullet points if feasible."
+                exp_user_prompt = f"""Rewrite the following experience bullet points to strongly align with the target job description. Focus on keywords, required skills, and desired outcomes mentioned in the job description.
+
+Original Bullet Points (separated by newline):
+---
+{current_desc}
+---
+
+Target Job Description:
+---
+{job_description}
+---
+
+Rewritten Bullet Points (Return ONLY the rewritten bullet points, separated by newline):"""
+
+                # Use slightly higher temperature for more creative rewriting, adjust tokens based on expected length
+                tailored_desc = _call_llm(exp_system_prompt, exp_user_prompt, temperature=0.75, max_tokens=len(current_desc.split())*10 + 100) # Estimate token need
+
+                if tailored_desc:
+                    exp.description = tailored_desc
+                    logger.info(f"Successfully tailored description for experience item {i+1}.")
+                else:
+                    logger.warning(f"Failed to tailor description for experience item {i+1} or LLM response was empty. Keeping original.")
+                updated_experiences.append(exp) # Add the (potentially updated) experience back
+
+            structured_data.experiences = updated_experiences # Replace with the list containing updated items
+        else:
+             logger.info("No experience entries found in structured data to tailor.")
+
+    # Keep the generic error handling for the overall tailoring process
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during LLM tailoring process: {e}", exc_info=True)
+
+    # No need for specific openai errors here anymore as _call_llm handles them
+    # except openai.APIError as e:
+    #     logger.error(f"Azure OpenAI API returned an API Error: {e}")
+    # except openai.APIConnectionError as e:
         logger.error(f"Failed to connect to Azure OpenAI API: {e}")
     except openai.RateLimitError as e:
         logger.error(f"Azure OpenAI API request exceeded rate limit: {e}")

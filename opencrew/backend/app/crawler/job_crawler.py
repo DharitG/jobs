@@ -56,7 +56,8 @@ class JobSpider(scrapy.Spider):
     name = "job_universal"
     custom_settings = {
         "ITEM_PIPELINES": {
-            "__main__.JobPostgresPipeline": 300,
+            # Use the full Python path to the class within the project structure
+            "app.crawler.job_crawler.JobPostgresPipeline": 300,
         },
         # Auto‑throttle keeps you polite
         "AUTOTHROTTLE_ENABLED": True,
@@ -329,46 +330,92 @@ class JobPostgresPipeline:
 
     async def _insert(self, pool, item):
         # Ensure required fields exist, provide defaults if necessary
-        url = item.get("url")
-        if not url:
-             # Decide how to handle items without a URL (log, drop, etc.)
-             logging.warning(f"Skipping item with no URL: {item.get('title')}")
-             return
+        url_val = item.get("url")
+        url = url_val[0] if isinstance(url_val, list) and url_val else url_val # Handle potential list
+        if not url or not isinstance(url, str):
+            logging.warning(f"Skipping item due to missing or invalid URL: {item.get('title')}")
+            return
 
-        title = item.get("title")
-        company = item.get("company")
-        location = item.get("location")
-        description_md = item.get("description_md", "") # Default to empty string
-        date_posted_str = item.get("date_posted")
-        h1b_sponsor = item.get("h1b_sponsor", False) # Default to False
-        raw = item.get("raw", "") # Default to empty string
-        source = item.get("source")
-        scraped_at_str = item.get("scraped_at")
+        # Extract and handle potential lists for other fields
+        title_val = item.get("title")
+        title = title_val[0] if isinstance(title_val, list) and title_val else title_val
 
-        # Attempt to parse dates, handle potential errors
+        company_val = item.get("company")
+        company = company_val[0] if isinstance(company_val, list) and company_val else company_val
+
+        location_val = item.get("location")
+        location = location_val[0] if isinstance(location_val, list) and location_val else location_val
+
+        # Correctly get description from 'description_md' item field
+        description_val = item.get("description_md")
+        description = (description_val[0] if isinstance(description_val, list) and description_val else description_val) or ""
+
+        date_posted_val = item.get("date_posted")
+        date_posted_str = date_posted_val[0] if isinstance(date_posted_val, list) and date_posted_val else date_posted_val
+
+        h1b_sponsor_val = item.get("h1b_sponsor") # Corresponds to visa_sponsorship_available
+        h1b_sponsor = (h1b_sponsor_val[0] if isinstance(h1b_sponsor_val, list) and h1b_sponsor_val else h1b_sponsor_val) or False
+
+        raw_val = item.get("raw")
+        raw = (raw_val[0] if isinstance(raw_val, list) and raw_val else raw_val) or ""
+
+        source_val = item.get("source")
+        source = source_val[0] if isinstance(source_val, list) and source_val else source_val
+
+        scraped_at_val = item.get("scraped_at")
+        scraped_at_str = scraped_at_val[0] if isinstance(scraped_at_val, list) and scraped_at_val else scraped_at_val
+
+        # --- Date Parsing (Improved) ---
         date_posted = None
-        if date_posted_str:
+        if date_posted_str and isinstance(date_posted_str, str):
             try:
-                date_posted = dt.datetime.fromisoformat(date_posted_str.replace('Z', '+00:00')).date()
-            except (ValueError, TypeError):
-                 logging.warning(f"Could not parse date_posted: {date_posted_str} for URL: {url}")
-                 # Optionally try other date formats here
+                if date_posted_str.endswith('Z'):
+                     date_posted_str = date_posted_str[:-1] + '+00:00'
+                # Attempt ISO format first
+                date_posted = dt.datetime.fromisoformat(date_posted_str).date()
+            except ValueError:
+                 # Add fallback parsing attempts if needed (e.g., different formats)
+                 logging.warning(f"Could not parse date_posted ISO string: '{date_posted_str}' for URL: {url}. Trying other formats...")
+                 # Example fallback: try: date_posted = dt.datetime.strptime(date_posted_str, '%Y-%m-%d').date() etc.
+                 pass # Keep date_posted = None if all parsing fails
+        elif date_posted_str:
+             logging.warning(f"date_posted value is not a string: {date_posted_str} for URL: {url}")
 
         scraped_at = None
-        if scraped_at_str:
+        if scraped_at_str and isinstance(scraped_at_str, str):
              try:
-                  scraped_at = dt.datetime.fromisoformat(scraped_at_str.replace('Z', '+00:00'))
-             except (ValueError, TypeError):
-                  logging.warning(f"Could not parse scraped_at: {scraped_at_str} for URL: {url}")
-                  scraped_at = dt.datetime.utcnow() # Fallback to now
+                  if scraped_at_str.endswith('Z'):
+                       scraped_at_str = scraped_at_str[:-1] + '+00:00'
+                  scraped_at = dt.datetime.fromisoformat(scraped_at_str)
+             except ValueError:
+                  logging.warning(f"Could not parse scraped_at ISO string: '{scraped_at_str}' for URL: {url}")
+                  scraped_at = dt.datetime.now(dt.timezone.utc) # Fallback to now UTC
+        else:
+             # Always set scraped_at, fallback to now if missing/invalid
+             if scraped_at_str:
+                  logging.warning(f"scraped_at value is not a string: {scraped_at_str} for URL: {url}")
+             scraped_at = dt.datetime.now(dt.timezone.utc)
 
+        # --- Database Insertion ---
         try:
+            # Ensure column names in INSERT match models/job.py exactly
+            # Correct columns: url, title, company, location, description, date_posted, visa_sponsorship_available, source, created_at, updated_at
             await pool.execute(
-                """INSERT INTO jobs(url, title, company, location, description_md, date_posted, h1b_sponsor, raw, source, scraped_at)
-                   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-                   ON CONFLICT (url) DO NOTHING""", # Consider DO UPDATE if you want to refresh data
-                url, title, company, location, description_md, date_posted,
-                h1b_sponsor, raw, source, scraped_at
+                 # Removed 'raw' column from INSERT statement
+                """INSERT INTO jobs(url, title, company, location, description, date_posted, visa_sponsorship_available, source, created_at, updated_at)
+                   VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                   ON CONFLICT (url) DO NOTHING""",
+                 # Removed 'raw' parameter from the list
+                url,                          # $1
+                title,                        # $2
+                company,                      # $3
+                location,                     # $4
+                description,                  # $5
+                date_posted,                  # $6
+                h1b_sponsor,                  # $7
+                source,                       # $8
+                scraped_at,                   # $9
+                scraped_at                    # $10
             )
             logging.debug(f"Inserted/Skipped job: {url}")
         except Exception as e:

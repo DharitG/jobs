@@ -45,7 +45,7 @@ This section covers the primary development focus, including the auto-apply mech
 *   ⬜ **Implement `resume_tailoring.py`: Preprocessing:** Implement `preprocess_text_items` to group/sort `TextItems` from frontend.
 *   ✅ **Implement `resume_tailoring.py`: Section Identification:** Implement `identify_sections` using heuristics. (Refined heading detection, keyword matching, and contact info logic).
 *   ✅ **Implement `resume_tailoring.py`: Data Extraction:** Implement `extract_structured_data` to populate `StructuredResume`. (Basic rule-based extraction for Exp/Edu added)
-*   ⬜ **Implement `resume_tailoring.py`: LLM Tailoring:** Implement `tailor_content` using LangChain/LLM calls for objective, skills, highlights.
+*   ✅ **Implement `resume_tailoring.py`: LLM Tailoring:** Implement `tailor_content` using Azure OpenAI calls for objective, skills, experience highlights. (Needs integration testing)
 *   ⬜ **Connect API:** Ensure `/api/v1/resumes/parse-and-tailor` correctly calls the implemented service and handles DB saving.
 
 ### Core Frontend (Dashboard & Related)
