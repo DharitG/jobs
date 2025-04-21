@@ -27,8 +27,13 @@ def create_resume(
     """
     Creates a new resume for a specific owner.
     """
+    # Convert structured_data Pydantic model to dict for JSONB storage if present
+    resume_data = resume.model_dump()
+    if resume_data.get("structured_data"):
+         resume_data["structured_data"] = resume.structured_data.model_dump() # Use .model_dump() on the nested model
+
     # NOTE: Embedding generation logic should be added here or in a service layer later
-    db_resume = models.Resume(**resume.model_dump(), owner_id=owner_id)
+    db_resume = models.Resume(**resume_data, owner_id=owner_id)
     db.add(db_resume)
     db.commit()
     db.refresh(db_resume)
@@ -41,7 +46,11 @@ def update_resume(
     Updates an existing resume.
     """
     update_data = resume_in.model_dump(exclude_unset=True)
-    
+
+    # Convert structured_data Pydantic model to dict for JSONB storage if present in update
+    if "structured_data" in update_data and update_data["structured_data"] is not None:
+         update_data["structured_data"] = resume_in.structured_data.model_dump() # Use .model_dump() on the nested model
+
     # NOTE: Embedding regeneration logic should be added here or in a service layer later if content changes
     for field, value in update_data.items():
         setattr(db_resume, field, value)

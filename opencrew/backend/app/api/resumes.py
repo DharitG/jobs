@@ -131,10 +131,22 @@ async def parse_and_tailor_resume(
             # TODO: Potentially fetch job description from DB using job_id if not provided directly
         )
         
-        # TODO: Add logic here to save/update the structured_resume in the database
-        # For example, associate it with the user or a specific resume record.
-        # E.g., crud.resume.update_resume_structured_data(db, resume_id=???, structured_data=structured_resume)
-        
+        # --- Save/Update Structured Data ---
+        resume_id_to_update = parse_request.resume_id # Access directly from the updated schema
+
+        if resume_id_to_update is not None: # Check if ID was provided
+            db_resume = crud.resume.get_resume(db, resume_id=resume_id_to_update, owner_id=current_user.id)
+            if db_resume:
+                logger.info(f"Updating structured data for resume ID: {resume_id_to_update}")
+                update_schema = schemas.ResumeUpdate(structured_data=structured_resume)
+                crud.resume.update_resume(db=db, db_resume=db_resume, resume_in=update_schema)
+            else:
+                logger.warning(f"Resume ID {resume_id_to_update} not found for user {current_user.id}. Structured data not saved.")
+                # Optionally, could create a new resume record here if desired
+        else:
+             logger.warning("No resume_id provided in the request. Structured data not saved.")
+             # Handle cases where no ID is given - perhaps create a new default resume?
+
         return schemas.ResumeParseResponse(
             structured_resume=structured_resume,
             message="Resume processed and tailored successfully (using placeholder logic)."

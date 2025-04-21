@@ -8,16 +8,22 @@ from typing import List, Dict, Any
 class ResumeBase(BaseModel):
     filename: str | None = None
     content: str # Assuming text content for now
+    # Store as JSON in DB, handled as dict/Any in Pydantic
+    embedding: Any | None = None
+    optimization_diffs: Any | None = None
+    structured_data: 'StructuredResume' | None = None # Forward reference
 
 # Properties to receive via API on creation
 class ResumeCreate(ResumeBase):
     pass # Currently same as Base, might change if file upload handled differently
 
 # Properties to receive via API on update
-class ResumeUpdate(ResumeBase):
-    filename: str | None = None # Make fields optional for update
+class ResumeUpdate(BaseModel): # Inherit directly from BaseModel for full control
+    filename: str | None = None
     content: str | None = None
-    embedding: List[float] | None = None # Allow updating embedding
+    embedding: Any | None = None # Allow updating embedding
+    optimization_diffs: Any | None = None
+    structured_data: 'StructuredResume' | None = None # Allow updating structured_data
 
 # Properties shared by models stored in DB
 class ResumeInDBBase(ResumeBase):
@@ -25,7 +31,9 @@ class ResumeInDBBase(ResumeBase):
     owner_id: int
     created_at: datetime
     updated_at: datetime | None = None
-    embedding: List[float] | None = None # Add embedding field
+    embedding: Any | None = None # DB stores JSONB
+    optimization_diffs: Any | None = None # DB stores JSONB
+    structured_data: Any | None = None # DB stores JSONB
 
     class Config:
         from_attributes = True # Pydantic V2
@@ -57,8 +65,9 @@ class ResumeParseRequest(BaseModel):
     # Optionally include job description or job ID here if needed for tailoring
     job_description: str | None = None 
     job_id: int | None = None
+    resume_id: int | None = None # ID of the existing resume to update
 
-# --- Schemas defining the structured ATS-friendly output --- 
+# --- Schemas defining the structured ATS-friendly output ---
 
 class BasicInfo(BaseModel):
     name: str | None = None
@@ -109,6 +118,11 @@ class StructuredResume(BaseModel):
     experiences: List[ExperienceItem] | None = None
     projects: List[ProjectItem] | None = None
     skills: List[SkillItem] | None = None
+
+# Allow forward reference resolution
+ResumeBase.model_rebuild()
+ResumeUpdate.model_rebuild()
+
 
 # Response model for the parsing/tailoring endpoint
 class ResumeParseResponse(BaseModel):

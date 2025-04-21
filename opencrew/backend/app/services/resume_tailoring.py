@@ -44,12 +44,43 @@ SECTION_KEYWORDS = {
     # Contact info is usually at the top and doesn't have a standard heading
 }
 
-def is_likely_heading(line: Dict[str, Any], avg_height: float) -> bool:
-    """Check if a line looks like a heading based on formatting."""
-    is_larger = line.get("height", 0) > avg_height * 1.1
-    is_all_caps = line.get("text", "").isupper() and len(line.get("text", "")) > 1
+def is_likely_heading(line: Dict[str, Any], avg_height: float, max_words_for_heading: int = 5) -> bool:
+    """Check if a line looks like a heading based on formatting and length."""
+    text = line.get("text", "").strip()
+    words = text.split()
+    word_count = len(words)
+
+    # Rule 1: Font size significantly larger than average
+    is_significantly_larger = line.get("height", 0) > avg_height * 1.15 # Increased threshold
+
+    # Rule 2: All caps (and not just a single letter/symbol)
+    is_all_caps = text.isupper() and word_count > 0 and len(text) > 1
+
+    # Rule 3: Boldish font style
     is_boldish = "bold" in line.get("fontName", "").lower()
-    return (is_larger or is_all_caps) or (is_boldish and (is_larger or is_all_caps))
+
+    # Rule 4: Short line (potentially a heading)
+    is_short_line = word_count <= max_words_for_heading
+
+    # Rule 5: Title Case (most words capitalized, not all caps)
+    # Handles cases like "Professional Experience" which might not be bold or larger
+    is_title_case = (
+        word_count > 0 and
+        not is_all_caps and
+        sum(1 for word in words if word and word[0].isupper()) / word_count >= 0.7 # High proportion capitalized
+    )
+
+    # Combine rules:
+    # - Strong indicators: Significantly larger font OR all caps.
+    # - Supporting indicators: Bold font, title case, short line length.
+    # A line is likely a heading if it has strong indicators OR
+    # if it's short and has supporting indicators (bold or title case).
+    is_strong_indicator = is_significantly_larger or is_all_caps
+    is_supporting_indicator = is_boldish or is_title_case
+
+    likely = is_strong_indicator or (is_short_line and is_supporting_indicator)
+    # logger.debug(f"is_likely_heading('{text[:30]}...'): larger={is_significantly_larger}, allcaps={is_all_caps}, bold={is_boldish}, short={is_short_line}, title={is_title_case} -> {likely}")
+    return likely
 
 
 def preprocess_text_items(text_items: List[PdfTextItem]) -> List[Dict[str, Any]]:
@@ -115,43 +146,65 @@ def identify_sections(processed_lines: List[Dict[str, Any]]) -> Dict[str, List[D
         return sections
     avg_height = statistics.mean(line.get("height", 0) for line in processed_lines if line.get("height", 0) > 0) if processed_lines else 0
     current_section = "unknown"
-    for line in processed_lines:
-        line_text_lower = line.get("text", "").lower().strip()
+    possible_heading_indices = {i for i, line in enumerate(processed_lines) if is_likely_heading(line, avg_height)}
+    current_section = "unknown" # Start with unknown, assume contact info is first unless a heading found early
+
+    for i, line in enumerate(processed_lines):
+        line_text = line.get("text", "").strip()
+        line_text_lower = line_text.lower()
+        word_count = len(line_text.split())
         matched_section = None
-        for section_name, keywords in SECTION_KEYWORDS.items():
-            for keyword_pattern in keywords:
-                if re.search(r'\b' + keyword_pattern + r'\b', line_text_lower, re.IGNORECASE):
-                     if is_likely_heading(line, avg_height) or len(line_text_lower.split()) <= 3:
+
+        is_potential_heading_line = i in possible_heading_indices
+
+        # Check for keyword match only if it looks like a heading or is a very short line
+        if is_potential_heading_line or word_count <= 5:
+            for section_name, keywords in SECTION_KEYWORDS.items():
+                for keyword_pattern in keywords:
+                    # Use regex that matches the whole line or the pattern as a standalone phrase
+                    # Check if the line *mostly* consists of the keyword pattern
+                    # This is still heuristic, might need adjustment
+                    if re.fullmatch(r'\s*' + keyword_pattern + r'\s*[:.]?', line_text_lower, re.IGNORECASE):
                         matched_section = section_name
                         break
-            if matched_section: break
+                    # Allow if keyword is present and it's considered a heading format
+                    elif is_potential_heading_line and re.search(r'\b' + keyword_pattern + r'\b', line_text_lower, re.IGNORECASE):
+                         matched_section = section_name
+                         break # Found a potential match
+                if matched_section:
+                    break # Found keyword for this section
+
         if matched_section:
+            # If we switch section, assign the matched line as the heading (don't add to previous section)
             current_section = matched_section
-            logger.debug(f"Identified section '{current_section}' at line: '{line.get('text')}'")
+            logger.debug(f"Identified section heading '{current_section}' at line {i}: '{line.get('text')}'")
+            # Don't append the heading line itself to the previous section's content
         else:
+            # If it wasn't identified as a heading, add it to the current section's content
             sections[current_section].append(line)
 
-    # Post-processing for contact info
-    potential_contact_section = "unknown" if sections["unknown"] else None
-    if not potential_contact_section and sections["contact"]: # If contact was explicitly tagged
-        potential_contact_section = "contact"
-    elif sections["unknown"]: # Check if unknown appears first
-         first_unknown_y = sections["unknown"][0]['y'] if sections["unknown"] else float('inf')
-         first_other_y = min((sections[s][0]['y'] for s in sections if s != "unknown" and sections[s]), default=float('inf'))
-         if first_unknown_y < first_other_y:
-             potential_contact_section = "unknown"
-         else: # If unknown is not first, keep it as unknown unless empty
-             if not sections["unknown"]: potential_contact_section = None
+    # Refined Post-processing for contact info
+    # If the first few lines were put in "unknown" and contain contact patterns, move them to "contact"
+    if sections["unknown"]:
+        moved_contact_lines = []
+        remaining_unknown = []
+        lines_to_check = min(5, len(sections["unknown"])) # Check first 5 unknown lines
+        contains_contact_pattern = False
+        for i in range(len(sections["unknown"])):
+            line_text = sections["unknown"][i].get("text", "")
+            if i < lines_to_check and (EMAIL_REGEX.search(line_text) or PHONE_REGEX.search(line_text) or LINKEDIN_REGEX.search(line_text)):
+                 contains_contact_pattern = True
 
-    if potential_contact_section and potential_contact_section != "contact":
-        logger.info(f"Assuming '{potential_contact_section}' section lines are contact info.")
-        sections["contact"].extend(sections.pop(potential_contact_section, []))
-        # Ensure the key exists before deleting
-        if potential_contact_section in sections:
-            del sections[potential_contact_section]
-        # Create unknown section if it doesn't exist after potential pop
-        if "unknown" not in sections:
-             sections["unknown"] = []
+            if i < lines_to_check and contains_contact_pattern:
+                 # If we found a pattern within the first few lines, assume this block is contact info
+                 moved_contact_lines.append(sections["unknown"][i])
+            else:
+                 remaining_unknown.append(sections["unknown"][i])
+
+        if moved_contact_lines:
+            logger.info(f"Moving {len(moved_contact_lines)} lines from 'unknown' to 'contact' based on pattern matching.")
+            sections["contact"].extend(moved_contact_lines)
+            sections["unknown"] = remaining_unknown
 
 
     logger.info(f"Section identification complete. Sections found: { {k: len(v) for k, v in sections.items() if v} }")
@@ -241,7 +294,9 @@ def extract_structured_data(sections: Dict[str, List[Dict[str, Any]]]) -> Struct
     contact_lines = sections.get("contact", [])
     skill_lines = sections.get("skills", [])
     objective_lines = sections.get("objective", []) # Basic objective handling
-    # TODO: Get lines for other sections when implemented
+    experience_lines = sections.get("experience", [])
+    education_lines = sections.get("education", [])
+    project_lines = sections.get("projects", []) # Keep placeholder for now
 
     # --- Extract Basic Info ---
     # Make a copy to avoid modifying the original section data if helpers sort/mutate
@@ -268,10 +323,14 @@ def extract_structured_data(sections: Dict[str, List[Dict[str, Any]]]) -> Struct
     # --- Extract Skills ---
     skills = _extract_skills(skill_lines)
 
-    # --- TODO: Extract Education, Experience, Projects ---
-    education = []
-    experiences = []
-    projects = []
+    # --- Extract Education ---
+    education = _extract_education(education_lines)
+
+    # --- Extract Experience ---
+    experiences = _extract_experience(experience_lines)
+
+    # --- TODO: Extract Projects ---
+    projects = [] # Placeholder for projects
 
     structured_data = StructuredResume(
         basic=basic_info,
@@ -282,8 +341,156 @@ def extract_structured_data(sections: Dict[str, List[Dict[str, Any]]]) -> Struct
         skills=skills
     )
 
-    logger.info("Structured data extraction complete (basic implementation for contact, objective, skills).")
+    logger.info(f"Structured data extraction complete. Found: {len(education)} education, {len(experiences)} experience entries.")
     return structured_data
+
+# --- Experience/Education/Project Extraction Helpers ---
+
+# Very basic date range regex (YYYY-YYYY, Month YYYY - Month YYYY, Month YYYY - Present)
+# Needs significant improvement for robustness (e.g., handling seasons, various separators)
+DATE_RANGE_REGEX = re.compile(
+    r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\b)\s*[-–—to]+\s*(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|Present|Current)\b' +
+    r'|(\b\d{4}\b)\s*[-–—to]+\s*(\b\d{4}|Present|Current)\b' +
+    r'|(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4})\b' # Single date (graduation?)
+    , re.IGNORECASE
+)
+# Simple bullet point start
+BULLET_POINT_REGEX = re.compile(r'^\s*[-•*–—]\s+')
+
+def _extract_experience(lines: List[Dict[str, Any]]) -> List[ExperienceItem]:
+    """Very basic rule-based extraction for experience section."""
+    experiences: List[ExperienceItem] = []
+    if not lines: return experiences
+
+    current_experience: Optional[ExperienceItem] = None
+    current_description_lines: List[str] = []
+
+    for i, line in enumerate(lines):
+        text = line.get("text", "").strip()
+        if not text: continue
+
+        date_match = DATE_RANGE_REGEX.search(text)
+        is_bullet = BULLET_POINT_REGEX.match(text)
+
+        # Heuristic: If a line contains a date range and isn't clearly just a description bullet,
+        # assume it *might* be the start (or part of the header) of a new role.
+        # This logic is very naive and needs improvement.
+        is_likely_role_header = date_match is not None and not is_bullet
+
+        # If we detect a potential new role header and we were processing a previous role
+        if is_likely_role_header and current_experience:
+             # Finalize the previous experience item
+            current_experience.description = "\n".join(current_description_lines).strip()
+            experiences.append(current_experience)
+            current_experience = None
+            current_description_lines = []
+
+        # If it's likely a new role header line (or we haven't started one yet)
+        if is_likely_role_header or not current_experience:
+            # Try to extract details from this line and potentially the previous one
+            # This needs more sophisticated logic to reliably find Title, Company, Location, Dates
+            title = "Unknown Title" # Placeholder
+            company = "Unknown Company" # Placeholder
+            location = None # Placeholder
+            dates = date_match.group(0).strip() if date_match else None
+
+            # Example: Check previous line if current looks just like dates/location
+            if i > 0 and (len(text.split()) < 5 or date_match): # If current line is short/has date
+                prev_text = lines[i-1].get("text","").strip()
+                # Maybe prev line had Title/Company? Very rough guess.
+                if len(prev_text.split()) > 1 and len(prev_text) < 70:
+                    # Simplistic split: assume first part is title, rest is company? Needs work!
+                    parts = prev_text.split(' at ') # Common separator
+                    if len(parts) == 2:
+                        title = parts[0].strip()
+                        company = parts[1].strip()
+                    else:
+                         parts = prev_text.split(',') # Another possibility
+                         if len(parts) >= 2:
+                            title = parts[0].strip()
+                            company = parts[1].strip()
+                         else: # Fallback
+                             title = prev_text # Assume previous line was title/company combined
+
+            # Create a new experience item (even if details are placeholders)
+            current_experience = ExperienceItem(
+                title=title,
+                company=company,
+                location=location,
+                dates=dates,
+                description="" # Will be filled by bullets
+            )
+            current_description_lines = [] # Reset descriptions
+
+        # If it's likely a description bullet point and we have an active role
+        elif is_bullet and current_experience:
+            current_description_lines.append(BULLET_POINT_REGEX.sub("", text)) # Add text without bullet
+
+        # Otherwise, assume it's part of the description for the current role
+        elif current_experience:
+             current_description_lines.append(text)
+
+    # Add the last processed experience item
+    if current_experience:
+        current_experience.description = "\n".join(current_description_lines).strip()
+        experiences.append(current_experience)
+
+    logger.info(f"Extracted {len(experiences)} potential experience entries (basic rules).")
+    return experiences
+
+
+def _extract_education(lines: List[Dict[str, Any]]) -> List[EducationItem]:
+    """Very basic rule-based extraction for education section."""
+    education_list: List[EducationItem] = []
+    if not lines: return education_list
+
+    # Similar naive approach to experience - look for date ranges as potential separators
+    # Assume lines between date ranges belong to one entry.
+    entry_lines: List[str] = []
+    for line in lines:
+        text = line.get("text", "").strip()
+        if not text: continue
+        entry_lines.append(text)
+        date_match = DATE_RANGE_REGEX.search(text)
+        # If a date is found, assume end of an entry (needs refinement)
+        if date_match:
+            if entry_lines:
+                # Very basic parsing of collected lines for one entry
+                degree = entry_lines[0] # Guess: First line is degree
+                institution = entry_lines[1] if len(entry_lines) > 1 else "Unknown Institution" # Guess: Second is institution
+                dates = date_match.group(0).strip()
+                # TODO: Extract location, GPA, details from other lines
+                details = "\n".join(entry_lines[2:]) # Rest are details?
+                education_list.append(EducationItem(
+                    institution=institution,
+                    degree=degree,
+                    dates=dates,
+                    details=details if details else None
+                ))
+                entry_lines = [] # Reset for next entry
+
+    # Process any remaining lines as a potential last entry
+    if entry_lines:
+         degree = entry_lines[0]
+         institution = entry_lines[1] if len(entry_lines) > 1 else "Unknown Institution"
+         # Try finding date in the last line if not found before
+         dates = None
+         if len(entry_lines) > 0:
+             last_line_match = DATE_RANGE_REGEX.search(entry_lines[-1])
+             if last_line_match:
+                 dates = last_line_match.group(0).strip()
+         details = "\n".join(entry_lines[2:])
+         education_list.append(EducationItem(
+                institution=institution,
+                degree=degree,
+                dates=dates,
+                details=details if details else None
+            ))
+
+
+    logger.info(f"Extracted {len(education_list)} potential education entries (basic rules).")
+    return education_list
+
 
 def tailor_content(structured_data: StructuredResume, job_description: str) -> StructuredResume:
     """

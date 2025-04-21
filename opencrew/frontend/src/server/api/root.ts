@@ -1,7 +1,8 @@
 import { postRouter } from "~/server/api/routers/post";
 import { applicationRouter } from "~/server/api/routers/application";
-import { visaRouter } from "~/server/api/routers/visa"; // Import visa router
-import { jobRouter } from "~/server/api/routers/job"; // Import job router
+import { visaRouter } from "~/server/api/routers/visa";
+import { jobRouter } from "~/server/api/routers/job";
+import { resumeRouter } from "~/server/api/routers/resume"; // Added resume router
 // import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -13,8 +14,9 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
   post: postRouter,
   application: applicationRouter,
-  visa: visaRouter, // Add visa router
-  job: jobRouter, // Add job router
+  visa: visaRouter,
+  job: jobRouter,
+  resume: resumeRouter, // Added resume router
   // auth: authRouter,
 });
 
