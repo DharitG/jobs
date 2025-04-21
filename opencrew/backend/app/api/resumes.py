@@ -3,9 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ... import crud, models, schemas
+from ...schemas.resume import ResumeParseRequest, ResumeParseResponse, BasicInfo, StructuredResume # Import new schemas correctly
 from ...db.session import get_db
 from .users import get_current_user # Dependency to get the logged-in user
-from ..services import profile_import # Import the parsing service
+from ..services import profile_import # Import the old parsing service
+from ..services import resume_tailoring # Import the new tailoring service
+import logging # Import logging
+
+logger = logging.getLogger(__name__) # Add logger
 
 router = APIRouter()
 
@@ -99,3 +104,45 @@ def delete_existing_resume(
     if deleted_resume is None: # Should not happen if checks above passed, but good practice
          raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found during deletion")
     return deleted_resume 
+
+
+# --- Endpoint for Structured PDF Parsing and Tailoring --- 
+
+@router.post("/parse-and-tailor", response_model=ResumeParseResponse)
+async def parse_and_tailor_resume(
+    *, 
+    db: Session = Depends(get_db),
+    parse_request: schemas.ResumeParseRequest, # Use the new input schema
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Receives parsed PDF text items from the frontend,
+    triggers backend processing/tailoring,
+    and returns a structured ATS-friendly resume.
+    """
+    logger.info(f"Received request to parse/tailor resume for user {current_user.id}. Job ID: {parse_request.job_id}")
+    logger.info(f"Received {len(parse_request.text_items)} text items.")
+    
+    try:
+        # Call the new service function (currently uses placeholder logic)
+        structured_resume = resume_tailoring.process_and_tailor_resume(
+            text_items=parse_request.text_items,
+            job_description=parse_request.job_description
+            # TODO: Potentially fetch job description from DB using job_id if not provided directly
+        )
+        
+        # TODO: Add logic here to save/update the structured_resume in the database
+        # For example, associate it with the user or a specific resume record.
+        # E.g., crud.resume.update_resume_structured_data(db, resume_id=???, structured_data=structured_resume)
+        
+        return schemas.ResumeParseResponse(
+            structured_resume=structured_resume,
+            message="Resume processed and tailored successfully (using placeholder logic)."
+        )
+        
+    except Exception as e:
+        logger.exception(f"Error during parse_and_tailor_resume for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process and tailor resume: {e}"
+        )
