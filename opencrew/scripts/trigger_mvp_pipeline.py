@@ -78,24 +78,64 @@ async def run_mvp_pipeline(db: Session, user_id: int):
         return
 
 
-    # 5. Trigger auto-apply for matched jobs
-    # Assuming autosubmit service takes user and list of matched job IDs
-    logger.info(f"Attempting auto-apply for matched jobs: {matched_job_ids}")
-    matched_jobs = [job for job in jobs if job.id in matched_job_ids] # Get the full job objects
+    # 5. Find or Create Application records and trigger auto-apply tasks
+    logger.info(f"Processing auto-apply for matched job IDs: {matched_job_ids}")
+    application_tasks = []
+    for job_id in matched_job_ids:
+        job = db.query(models.Job).filter(models.Job.id == job_id).first()
+        if not job:
+            logger.warning(f"Job ID {job_id} from matches not found in DB. Skipping.")
+            continue
 
-    try:
-        # Assuming autosubmit.submit_applications is an async function
-        # Pass the structured resume data for filling forms
-        await autosubmit.submit_applications(
-            db=db,
-            user=user,
-            jobs=matched_jobs,
-            structured_resume=structured_resume_data
-        )
-        logger.info("Auto-apply process initiated (check service logs/DB for individual job statuses).")
-        logger.warning("Note: Actual success depends on CAPTCHA handling and adapter robustness (currently limited).")
-    except Exception as e:
-         logger.error(f"Error during auto-submit service execution: {e}", exc_info=True)
+        # Find existing application or create a new one
+        application = db.query(models.Application).filter(
+            models.Application.user_id == user_id,
+            models.Application.job_id == job_id
+        ).first()
+
+        if application:
+            logger.info(f"Found existing application ID: {application.id} for user {user_id} and job {job_id}")
+            # Optionally: Check status before re-triggering?
+            # if application.status == models.ApplicationStatus.APPLIED:
+            #     logger.info(f"Application {application.id} already applied. Skipping.")
+            #     continue
+            application.status = models.ApplicationStatus.PENDING # Reset status for re-try
+            application.notes = "Pipeline triggered again."
+            application.resume_id = latest_resume.id # Ensure latest resume is linked
+        else:
+            logger.info(f"Creating new application record for user {user_id} and job {job_id}")
+            application_create = schemas.ApplicationCreate(
+                status=models.ApplicationStatus.PENDING,
+                notes="Created by MVP pipeline trigger.",
+                job_id=job_id,
+                resume_id=latest_resume.id # Link the latest resume
+            )
+            application = crud.application.create_user_application(
+                db=db, application=application_create, user_id=user_id
+            )
+            db.flush() # Ensure ID is generated if needed immediately
+            logger.info(f"Created new application ID: {application.id}")
+
+        if application:
+             # Add the async task call to a list
+            application_tasks.append(autosubmit.apply_to_job_async(db=db, application_id=application.id))
+        else:
+             logger.error(f"Failed to find or create application for job {job_id}. Cannot trigger auto-apply.")
+
+    # Execute all application tasks concurrently
+    if application_tasks:
+        logger.info(f"Running {len(application_tasks)} auto-apply tasks concurrently...")
+        results = await asyncio.gather(*application_tasks, return_exceptions=True)
+        logger.info("Finished running auto-apply tasks.")
+        # Log results/exceptions
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                # The exception is already logged within apply_to_job_async's final catch block
+                logger.error(f"Task for application (index {i}) failed with an exception: {result}")
+            # else: # Success is logged within apply_to_job_async
+            #    logger.info(f"Task for application (index {i}) completed.")
+    else:
+        logger.info("No application tasks to run.")
 
 
     logger.info(f"MVP pipeline trigger finished for user_id: {user_id}")

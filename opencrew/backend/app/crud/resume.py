@@ -22,18 +22,29 @@ def get_resumes_by_owner(
     return db.query(models.Resume).filter(models.Resume.owner_id == owner_id).offset(skip).limit(limit).all()
 
 def create_resume(
-    db: Session, resume: schemas.ResumeCreate, owner_id: int
+    db: Session,
+    resume_in: schemas.ResumeCreate, # Rename parameter for clarity
+    owner_id: int,
+    original_filepath: Optional[str] = None # Add optional parameter for S3 key
 ) -> models.Resume:
     """
     Creates a new resume for a specific owner.
     """
     # Convert structured_data Pydantic model to dict for JSONB storage if present
-    resume_data = resume.model_dump()
+    resume_data = resume_in.model_dump()
     if resume_data.get("structured_data"):
-         resume_data["structured_data"] = resume.structured_data.model_dump() # Use .model_dump() on the nested model
+         # Ensure nested Pydantic models are also dumped if they exist
+         if resume_in.structured_data and hasattr(resume_in.structured_data, 'model_dump'):
+             resume_data["structured_data"] = resume_in.structured_data.model_dump()
+         # else: # Keep raw dict if somehow it's already a dict
+         #    resume_data["structured_data"] = resume_in.structured_data
 
     # NOTE: Embedding generation logic should be added here or in a service layer later
-    db_resume = models.Resume(**resume_data, owner_id=owner_id)
+    db_resume = models.Resume(
+        **resume_data,
+        owner_id=owner_id,
+        original_filepath=original_filepath # Set the filepath from the parameter
+    )
     db.add(db_resume)
     db.commit()
     db.refresh(db_resume)

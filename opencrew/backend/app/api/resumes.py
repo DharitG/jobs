@@ -1,6 +1,11 @@
+import uuid # For generating unique S3 keys
+import boto3
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from typing import List
+
+from ...core.config import settings # Import settings for S3 config
 
 from ... import crud, models, schemas
 from ...schemas.resume import ResumeParseRequest, ResumeParseResponse, BasicInfo, StructuredResume # Import new schemas correctly
@@ -21,29 +26,99 @@ async def upload_resume(
     file: UploadFile = File(...),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Upload a resume PDF, parse it, and save it for the current user."""
+    """
+    Upload a resume PDF, save it to S3, extract text,
+    and save metadata to the database for the current user.
+    """
     if file.content_type != 'application/pdf':
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid file type. Only PDF is allowed."
         )
-    
+
+    # --- S3 Upload ---
+    s3_key = None
+    if settings.S3_BUCKET_NAME and settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION_NAME
+        )
+        # Generate a unique key for the S3 object
+        file_extension = ".pdf" # Enforce pdf
+        unique_id = uuid.uuid4()
+        # Sanitize filename slightly (optional)
+        safe_filename = "".join(c if c.isalnum() or c in ('-', '_', '.') else '_' for c in file.filename.replace(file_extension, ''))
+        s3_key = f"resumes/{current_user.id}/{unique_id}_{safe_filename}{file_extension}"
+
+        try:
+            logger.info(f"Uploading resume for user {current_user.id} to s3://{settings.S3_BUCKET_NAME}/{s3_key}")
+            # Reset file pointer before reading for upload
+            await file.seek(0)
+            s3_client.upload_fileobj(
+                Fileobj=file.file, # Access the underlying file-like object
+                Bucket=settings.S3_BUCKET_NAME,
+                Key=s3_key,
+                ExtraArgs={'ContentType': 'application/pdf'}
+            )
+            logger.info(f"Successfully uploaded resume to S3 key: {s3_key}")
+        except (NoCredentialsError, PartialCredentialsError):
+            logger.error(f"S3 credentials not found or incomplete. Cannot upload resume for user {current_user.id}.")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="S3 storage configuration error.")
+        except ClientError as e:
+            logger.error(f"S3 ClientError during resume upload for user {current_user.id}: {e}", exc_info=True)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload resume to storage.")
+        except Exception as e:
+            logger.error(f"Unexpected error during S3 upload for user {current_user.id}: {e}", exc_info=True)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred during file upload.")
+    else:
+        logger.error(f"S3 storage is not configured. Cannot upload resume for user {current_user.id}.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Resume storage is not configured.")
+
+    # --- Text Extraction (after successful upload) ---
     try:
+        # Reset file pointer again before reading for text extraction
+        await file.seek(0)
+        # Assuming parse_pdf_to_text can handle the UploadFile object directly
+        # If not, might need to save temporarily or read content differently
         resume_text = profile_import.parse_pdf_to_text(file)
     except ValueError as e:
+        logger.error(f"Error parsing PDF content for user {current_user.id}, S3 key {s3_key}: {e}")
+        # Note: File is already uploaded. Decide on cleanup or keep S3 object? For now, raise error.
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"Error parsing PDF: {e}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error parsing PDF content: {e}"
         )
-        
+    except Exception as e:
+        logger.error(f"Unexpected error during PDF parsing for user {current_user.id}, S3 key {s3_key}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred during PDF parsing.")
+
     if not resume_text.strip():
+        logger.warning(f"Could not extract text from PDF for user {current_user.id}, S3 key {s3_key}. Saving resume entry with empty content.")
+        # Decide if this is an error or if we allow storing the file without text
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Could not extract text from PDF."
         )
         
-    resume_in = schemas.ResumeCreate(filename=file.filename, content=resume_text)
-    new_resume = crud.resume.create_resume(db=db, resume_in=resume_in, owner_id=current_user.id)
+        # Keep resume_text empty if extraction failed but upload succeeded
+        resume_text = ""
+        # raise HTTPException(
+        #     status_code=status.HTTP_400_BAD_REQUEST,
+        #     detail="Could not extract text from PDF."
+        # )
+
+    # --- Database Record Creation ---
+    resume_in = schemas.ResumeCreate(filename=file.filename, content=resume_text) # Pass text content
+    # Pass the S3 key separately to the CRUD function
+    new_resume = crud.resume.create_resume(
+        db=db,
+        resume_in=resume_in,
+        owner_id=current_user.id,
+        original_filepath=s3_key # Pass the S3 key here
+    )
+    logger.info(f"Created resume DB record ID {new_resume.id} for user {current_user.id} with S3 key {s3_key}")
     return new_resume
 
 @router.get("/", response_model=List[schemas.Resume])

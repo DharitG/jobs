@@ -184,10 +184,11 @@ async def apply_to_job_async(db: Session, application_id: int):
             db.add(application)
             db.commit()
             return
-        if not application.resume.file_path:
-            logger.error(f"Resume file path not found for resume ID: {application.resume.id}, application {application_id}")
+        # Check for original_filepath (where S3 key is stored) instead of file_path
+        if not application.resume.original_filepath:
+            logger.error(f"Resume original_filepath (S3 key) not found for resume ID: {application.resume.id}, application {application_id}")
             application.status = models.ApplicationStatus.ERROR
-            application.notes = "Resume file path missing."
+            application.notes = "Resume S3 key missing."
             db.add(application)
             db.commit()
             return
@@ -223,13 +224,18 @@ async def apply_to_job_async(db: Session, application_id: int):
             "phone": user.phone_number or "", # Use new field
             "linkedin_url": user.linkedin_url or "" # Use new field
         }
-        task_data = JobApplicationTask(
-            application_id=application_id,
-            job_url=job.url,
-            resume_path=resume.file_path, # Ensure this is an accessible path for the worker
-            profile=user_profile
-            # credentials can be added if/when needed
-        )
+        # The JobApplicationTask dataclass was part of the old Playwright approach,
+        # we can remove it or just not use it here. The prompt needs the path directly.
+        # Ensure resume.original_filepath (S3 key) is available.
+        resume_s3_key = resume.original_filepath
+        if not resume_s3_key:
+             # This case should have been caught earlier, but double-check
+             logger.error(f"Critical: Resume S3 key missing before agent execution for app {application_id}.")
+             application.status = models.ApplicationStatus.ERROR
+             application.notes = "Critical: Resume S3 key missing just before agent call."
+             db.add(application)
+             db.commit()
+             return
 
         # --- Execute browser-use Agent ---
         agent_success = False
@@ -246,12 +252,12 @@ async def apply_to_job_async(db: Session, application_id: int):
             Applicant Profile:
             {profile_str}
 
-            Resume File Path: {resume.file_path}
+            Resume S3 Key: {resume_s3_key} # Changed from file_path to S3 key
 
             Instructions:
             1. Navigate to the job URL: {job.url}
             2. Fill out the application form using the provided applicant profile information.
-            3. Upload the resume located at the path: {resume.file_path}. Ensure the file upload element is correctly targeted.
+            3. **Important:** You need to handle resume upload. The resume is stored in AWS S3 with the key: **{resume_s3_key}**. You might need to download this file first to a temporary location accessible by the browser instance before uploading it to the job application form. Standard S3 access via AWS credentials might be required. Ensure the file upload element on the job site is correctly targeted.
             4. Handle any standard questions (like work authorization, sponsorships) appropriately based on typical US-based applicant information unless specified otherwise in the profile. You may need to select "Yes" for authorization and "No" for sponsorship if unsure and fields are required.
             5. Answer basic EEOC questions (Gender, Race, Ethnicity, Veteran Status, Disability) by selecting "Decline to self-identify" or similar options if available and required.
             6. Do NOT attempt to answer complex custom questions requiring free-text input (e.g., "Why do you want to work here?", salary expectations) unless the answer is directly in the profile. Skip them if possible, otherwise stop and report the blockage.
@@ -341,8 +347,19 @@ async def apply_to_job_async(db: Session, application_id: int):
             agent_success = False
             agent_message = f"Agent execution failed with exception: {agent_exec_error}"
             agent_error_details = str(agent_exec_error)
-            # TODO: Attempt to save screenshot here if possible, though browser state might be lost
+            # Attempt to save screenshot even if agent execution failed mid-way, if history exists
+            if 'history' in locals() and history:
+                 final_screenshot_url = upload_screenshot_to_s3(history, application_id, "failure_exec")
 
+
+        finally:
+            # --- Clean up temporary resume file ---
+            if temp_resume_path and Path(temp_resume_path).exists():
+                try:
+                    Path(temp_resume_path).unlink()
+                    logger.info(f"Successfully deleted temporary resume file: {temp_resume_path}")
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to delete temporary resume file {temp_resume_path}: {cleanup_error}")
 
         # --- Update Application Status Based on Agent Outcome ---
         if agent_success:

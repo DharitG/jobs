@@ -3,13 +3,12 @@ import re
 from typing import List, Dict, Any, Optional # Added Optional
 
 from ..schemas.resume import PdfTextItem, StructuredResume, BasicInfo, EducationItem, ExperienceItem, ProjectItem, SkillItem
-from collections import Counter
-import statistics
+import json # Added for LLM response parsing
+from pydantic import ValidationError # Added for parsing validation
 
 import openai # Added
 from ..core.config import settings # Added
 
-# TODO: Import necessary LangChain components (ChatPromptTemplate, LLM, output parsers)
 
 logger = logging.getLogger(__name__)
 
@@ -67,468 +66,119 @@ def _call_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7, ma
     return None
 
 
-# --- Preprocessing & Section Identification Helpers ---
+# --- LLM-Based Resume Parsing ---
 
-# Constants for preprocessing
-Y_TOLERANCE_FACTOR = 0.5 # Allow lines whose y-coords differ by this factor of the item height
-
-# Constants for section identification
-# Simple keyword matching (case-insensitive, allow variations)
-SECTION_KEYWORDS = {
-    "objective": [r"objective", r"summary", r"profile"],
-    "experience": [r"experience", r"employment history", r"work history", r"professional experience"],
-    "education": [r"education", r"academic background"],
-    "projects": [r"projects", r"personal projects"],
-    "skills": [r"skills", r"technical skills", r"competencies", r"proficiencies"],
-    # Contact info is usually at the top and doesn't have a standard heading
-}
-
-def is_likely_heading(line: Dict[str, Any], avg_height: float, max_words_for_heading: int = 5) -> bool:
-    """Check if a line looks like a heading based on formatting and length."""
-    text = line.get("text", "").strip()
-    words = text.split()
-    word_count = len(words)
-
-    # Rule 1: Font size significantly larger than average
-    is_significantly_larger = line.get("height", 0) > avg_height * 1.15 # Increased threshold
-
-    # Rule 2: All caps (and not just a single letter/symbol)
-    is_all_caps = text.isupper() and word_count > 0 and len(text) > 1
-
-    # Rule 3: Boldish font style
-    is_boldish = "bold" in line.get("fontName", "").lower()
-
-    # Rule 4: Short line (potentially a heading)
-    is_short_line = word_count <= max_words_for_heading
-
-    # Rule 5: Title Case (most words capitalized, not all caps)
-    # Handles cases like "Professional Experience" which might not be bold or larger
-    is_title_case = (
-        word_count > 0 and
-        not is_all_caps and
-        sum(1 for word in words if word and word[0].isupper()) / word_count >= 0.7 # High proportion capitalized
-    )
-
-    # Combine rules:
-    # - Strong indicators: Significantly larger font OR all caps.
-    # - Supporting indicators: Bold font, title case, short line length.
-    # A line is likely a heading if it has strong indicators OR
-    # if it's short and has supporting indicators (bold or title case).
-    is_strong_indicator = is_significantly_larger or is_all_caps
-    is_supporting_indicator = is_boldish or is_title_case
-
-    likely = is_strong_indicator or (is_short_line and is_supporting_indicator)
-    # logger.debug(f"is_likely_heading('{text[:30]}...'): larger={is_significantly_larger}, allcaps={is_all_caps}, bold={is_boldish}, short={is_short_line}, title={is_title_case} -> {likely}")
-    return likely
-
-
-def preprocess_text_items(text_items: List[PdfTextItem]) -> List[Dict[str, Any]]:
+def _parse_resume_with_llm(resume_text: str) -> StructuredResume:
     """
-    Groups text items into lines based on coordinates and sorts them logically.
-    Returns a list of dictionaries, each representing a line with combined text and style info.
+    Uses an LLM to parse raw resume text into the StructuredResume Pydantic model.
     """
-    if not text_items:
-        return []
-    logger.info(f"Preprocessing {len(text_items)} text items...")
-    text_items.sort(key=lambda item: (item.transform[5], item.transform[4]))
-    processed_lines = []
-    current_line_items: List[PdfTextItem] = []
-    for item in text_items:
-        if not item.str or item.str.isspace(): continue
-        item_y = item.transform[5]
-        item_height = item.height
-        if not current_line_items:
-            current_line_items.append(item)
-        else:
-            current_line_y = current_line_items[0].transform[5]
-            y_tolerance = current_line_items[0].height * Y_TOLERANCE_FACTOR
-            if abs(item_y - current_line_y) <= y_tolerance:
-                current_line_items.append(item)
-            else:
-                current_line_items.sort(key=lambda i: i.transform[4])
-                line_text = " ".join(i.str.strip() for i in current_line_items if i.str)
-                if line_text:
-                    line_y = statistics.mean(i.transform[5] for i in current_line_items)
-                    line_x = min(i.transform[4] for i in current_line_items)
-                    line_height = statistics.mean(i.height for i in current_line_items)
-                    font_counts = Counter(i.fontName for i in current_line_items)
-                    dominant_font = font_counts.most_common(1)[0][0] if font_counts else "Unknown"
-                    processed_lines.append({
-                        "text": line_text, "y": line_y, "x": line_x, "height": line_height,
-                        "fontName": dominant_font, "_items": [item.model_dump() for item in current_line_items]
-                    })
-                current_line_items = [item]
-    if current_line_items:
-        current_line_items.sort(key=lambda i: i.transform[4])
-        line_text = " ".join(i.str.strip() for i in current_line_items if i.str)
-        if line_text:
-            line_y = statistics.mean(i.transform[5] for i in current_line_items)
-            line_x = min(i.transform[4] for i in current_line_items)
-            line_height = statistics.mean(i.height for i in current_line_items)
-            font_counts = Counter(i.fontName for i in current_line_items)
-            dominant_font = font_counts.most_common(1)[0][0] if font_counts else "Unknown"
-            processed_lines.append({
-                "text": line_text, "y": line_y, "x": line_x, "height": line_height,
-                "fontName": dominant_font, "_items": [item.model_dump() for item in current_line_items]
-            })
-    logger.info(f"Preprocessing complete. Generated {len(processed_lines)} lines.")
-    return processed_lines
+    logger.info("Parsing resume text using LLM...")
 
-def identify_sections(processed_lines: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    # Define the expected JSON structure based on Pydantic models
+    # (Providing this in the prompt helps the LLM)
+    schema_description = """
+    The output MUST be a JSON object conforming to the following Pydantic schema structure:
+
+    class BasicInfo(BaseModel):
+        name: str | None = None
+        email: str | None = None
+        phone: str | None = None
+        location: str | None = None
+        linkedin_url: str | None = None
+        github_url: str | None = None
+        portfolio_url: str | None = None
+
+    class EducationItem(BaseModel):
+        institution: str
+        area: str | None = None # e.g., Computer Science
+        studyType: str | None = None # e.g., Bachelor of Science
+        startDate: str | None = None # Format as YYYY-MM-DD or YYYY-MM or YYYY if possible
+        endDate: str | None = None # Format as YYYY-MM-DD or YYYY-MM or YYYY or 'Present' if possible
+        score: str | None = None # e.g., GPA
+        courses: List[str] | None = None
+        # highlights: List[str] | None = None # Exclude highlights for initial parsing
+
+    class ExperienceItem(BaseModel):
+        company: str
+        position: str
+        website: str | None = None
+        startDate: str | None = None # Format as YYYY-MM-DD or YYYY-MM or YYYY if possible
+        endDate: str | None = None # Format as YYYY-MM-DD or YYYY-MM or YYYY or 'Present' if possible
+        summary: str | None = None # Overall summary of the role
+        highlights: List[str] | None = None # Key responsibilities/achievements as bullet points
+
+    class ProjectItem(BaseModel):
+        name: str
+        description: str | None = None
+        keywords: List[str] | None = None
+        url: str | None = None
+        startDate: str | None = None # Format as YYYY-MM-DD or YYYY-MM or YYYY if possible
+        endDate: str | None = None # Format as YYYY-MM-DD or YYYY-MM or YYYY if possible
+        # highlights: List[str] | None = None # Exclude highlights for initial parsing
+
+    class SkillItem(BaseModel):
+        category: str # e.g., Programming Languages, Frameworks, Databases, Tools, Cloud Platforms
+        skills: List[str]
+
+    class StructuredResume(BaseModel):
+        basic: BasicInfo | None = None
+        objective: str | None = None # A concise career objective or summary statement
+        education: List[EducationItem] | None = None
+        experiences: List[ExperienceItem] | None = None
+        projects: List[ProjectItem] | None = None
+        skills: List[SkillItem] | None = None
+
+    VERY IMPORTANT:
+    - Output ONLY the JSON object. Do not include any introductory text, explanations, or markdown formatting like ```json ... ```.
+    - Ensure the JSON is valid and strictly adheres to the specified Pydantic models.
+    - Pay close attention to data types (string, list, etc.).
+    - For dates (startDate, endDate), try to extract year, month, and day if available, otherwise use year-month or just year. Use 'Present' for ongoing roles/education. If dates are unclear, omit them (set to null/None).
+    - For experience highlights, extract bullet points or descriptive sentences about responsibilities and achievements.
+    - For skills, group related skills under appropriate categories (e.g., "Programming Languages", "Frameworks", "Databases", "Cloud Platforms", "Tools").
     """
-    Identifies logical sections based on keyword matching and simple formatting heuristics.
-    """
-    logger.info("Identifying sections...")
-    sections = { "contact": [], "objective": [], "experience": [], "education": [], "projects": [], "skills": [], "unknown": [] }
-    if not processed_lines:
-        logger.warning("No processed lines to identify sections from.")
-        return sections
-    avg_height = statistics.mean(line.get("height", 0) for line in processed_lines if line.get("height", 0) > 0) if processed_lines else 0
-    current_section = "unknown"
-    possible_heading_indices = {i for i, line in enumerate(processed_lines) if is_likely_heading(line, avg_height)}
-    current_section = "unknown" # Start with unknown, assume contact info is first unless a heading found early
 
-    for i, line in enumerate(processed_lines):
-        line_text = line.get("text", "").strip()
-        line_text_lower = line_text.lower()
-        word_count = len(line_text.split())
-        matched_section = None
+    system_prompt = f"""You are an expert resume parser. Your task is to analyze the provided raw resume text and extract the information into a structured JSON format. {schema_description}"""
+    user_prompt = f"""Parse the following resume text and generate the JSON output:
 
-        is_potential_heading_line = i in possible_heading_indices
+--- RESUME TEXT START ---
+{resume_text}
+--- RESUME TEXT END ---
 
-        # Check for keyword match only if it looks like a heading or is a very short line
-        if is_potential_heading_line or word_count <= 5:
-            for section_name, keywords in SECTION_KEYWORDS.items():
-                for keyword_pattern in keywords:
-                    # Use regex that matches the whole line or the pattern as a standalone phrase
-                    # Check if the line *mostly* consists of the keyword pattern
-                    # This is still heuristic, might need adjustment
-                    if re.fullmatch(r'\s*' + keyword_pattern + r'\s*[:.]?', line_text_lower, re.IGNORECASE):
-                        matched_section = section_name
-                        break
-                    # Allow if keyword is present and it's considered a heading format
-                    elif is_potential_heading_line and re.search(r'\b' + keyword_pattern + r'\b', line_text_lower, re.IGNORECASE):
-                         matched_section = section_name
-                         break # Found a potential match
-                if matched_section:
-                    break # Found keyword for this section
+JSON Output:"""
 
-        if matched_section:
-            # If we switch section, assign the matched line as the heading (don't add to previous section)
-            current_section = matched_section
-            logger.debug(f"Identified section heading '{current_section}' at line {i}: '{line.get('text')}'")
-            # Don't append the heading line itself to the previous section's content
-        else:
-            # If it wasn't identified as a heading, add it to the current section's content
-            sections[current_section].append(line)
+    # Use a potentially larger max_tokens for complex resumes
+    max_parsing_tokens = 3000 # Adjust as needed based on typical resume complexity and model limits
 
-    # Refined Post-processing for contact info
-    # If the first few lines were put in "unknown" and contain contact patterns, move them to "contact"
-    if sections["unknown"]:
-        moved_contact_lines = []
-        remaining_unknown = []
-        lines_to_check = min(5, len(sections["unknown"])) # Check first 5 unknown lines
-        contains_contact_pattern = False
-        for i in range(len(sections["unknown"])):
-            line_text = sections["unknown"][i].get("text", "")
-            if i < lines_to_check and (EMAIL_REGEX.search(line_text) or PHONE_REGEX.search(line_text) or LINKEDIN_REGEX.search(line_text)):
-                 contains_contact_pattern = True
+    llm_response_str = _call_llm(system_prompt, user_prompt, temperature=0.2, max_tokens=max_parsing_tokens)
 
-            if i < lines_to_check and contains_contact_pattern:
-                 # If we found a pattern within the first few lines, assume this block is contact info
-                 moved_contact_lines.append(sections["unknown"][i])
-            else:
-                 remaining_unknown.append(sections["unknown"][i])
+    if not llm_response_str:
+        logger.error("LLM did not return a response for parsing.")
+        # Return an empty structure or raise an error
+        return StructuredResume(basic=BasicInfo(), objective="Failed to parse resume content via LLM.")
 
-        if moved_contact_lines:
-            logger.info(f"Moving {len(moved_contact_lines)} lines from 'unknown' to 'contact' based on pattern matching.")
-            sections["contact"].extend(moved_contact_lines)
-            sections["unknown"] = remaining_unknown
-
-
-    logger.info(f"Section identification complete. Sections found: { {k: len(v) for k, v in sections.items() if v} }")
-    return sections
-
-# --- Regex Patterns for Extraction ---
-# Basic patterns, can be improved significantly
-EMAIL_REGEX = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
-PHONE_REGEX = re.compile(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}')
-LINKEDIN_REGEX = re.compile(r'(?:https?://)?(?:www\.)?linkedin\.com/in/[\w-]+/?')
-
-# --- Extraction Helper Functions ---
-
-def _find_first_match(lines: List[Dict[str, Any]], regex: re.Pattern) -> Optional[str]:
-    """Find the first match of a regex in a list of lines."""
-    for line in lines:
-        match = regex.search(line.get("text", ""))
-        if match:
-            return match.group(0).strip()
-    return None
-
-def _extract_name(lines: List[Dict[str, Any]]) -> Optional[str]:
-    """Extract name, often the first or second line with largest font."""
-    if not lines: return None
-    # Sort by font size (height) desc, then position asc
-    lines.sort(key=lambda l: (-l.get("height", 0), l.get("y", 0), l.get("x", 0)))
-    # Check top few lines for something that looks like a name
-    for i in range(min(3, len(lines))): # Check top 3 lines
-        text = lines[i].get("text", "").strip()
-        # Simple check: At least two words, capitalized, not purely contact info?
-        words = text.split()
-        if (len(words) >= 2 and
-            all(word[0].isupper() for word in words if word) and
-            not EMAIL_REGEX.search(text) and
-            not PHONE_REGEX.search(text) and
-            not LINKEDIN_REGEX.search(text) and
-            len(text) < 50): # Avoid long sentences
-                 return text
-    logger.warning("Could not reliably identify name in contact section.")
-    return None # Fallback
-
-def _extract_skills(lines: List[Dict[str, Any]]) -> List[SkillItem]:
-    """Extract skills, potentially handling categories (basic)."""
-    skills_list: List[SkillItem] = []
-    current_category = "General"
-
-    # Simple approach: split lines by common delimiters like ',', ';', '|', or bullets '•●*'
-    # More advanced: Look for lines ending in ':' as category headers.
-
-    for line in lines:
-        text = line.get("text", "").strip()
-        if not text: continue
-
-        # Basic category detection (line ending with ':')
-        if text.endswith(':') and len(text) < 50: # Avoid long lines ending in ':'
-            current_category = text[:-1].strip()
-            logger.debug(f"Detected skills category: {current_category}")
-            continue # Don't add the category header itself as a skill
-
-        # Split potential skills within the line
-        # Replace common bullets with a standard delimiter (comma) for splitting
-        text = re.sub(r'[•●*]\s+', ', ', text)
-        # Split by comma, semicolon, or pipe
-        potential_skills = re.split(r'[,;|\n]+', text)
-
-        for skill_name in potential_skills:
-            skill_name = skill_name.strip()
-            # Basic filtering: non-empty, not just punctuation, reasonable length
-            if skill_name and len(skill_name) > 1 and len(skill_name) < 50 and not re.fullmatch(r'[^a-zA-Z0-9\s]+', skill_name): # Allow spaces within skill name
-                 # Avoid adding duplicates within the same category (case-insensitive check)
-                 if not any(s.name.lower() == skill_name.lower() and s.category.lower() == current_category.lower() for s in skills_list):
-                     skills_list.append(SkillItem(name=skill_name, category=current_category))
-
-    if not skills_list:
-        logger.warning("No skills extracted. The format might be unrecognized.")
-
-    return skills_list
-
-
-def extract_structured_data(sections: Dict[str, List[Dict[str, Any]]]) -> StructuredResume:
-    """
-    Parses the lines within each identified section into the structured Pydantic models.
-    Currently implements basic extraction for Contact Info, Objective, and Skills.
-    """
-    logger.info("Extracting structured data from sections...")
-
-    contact_lines = sections.get("contact", [])
-    skill_lines = sections.get("skills", [])
-    objective_lines = sections.get("objective", []) # Basic objective handling
-    experience_lines = sections.get("experience", [])
-    education_lines = sections.get("education", [])
-    project_lines = sections.get("projects", []) # Keep placeholder for now
-
-    # --- Extract Basic Info ---
-    # Make a copy to avoid modifying the original section data if helpers sort/mutate
-    contact_lines_copy = [line.copy() for line in contact_lines]
-    name = _extract_name(contact_lines_copy) # _extract_name sorts the copy
-    email = _find_first_match(contact_lines, EMAIL_REGEX)
-    phone = _find_first_match(contact_lines, PHONE_REGEX)
-    linkedin = _find_first_match(contact_lines, LINKEDIN_REGEX)
-    # TODO: Extract location, portfolio/website etc.
-
-    basic_info = BasicInfo(
-        name=name,
-        email=email,
-        phone=phone,
-        linkedin_url=linkedin,
-        # location=None, # Add when implemented
-        # website=None, # Add when implemented
-    )
-
-    # --- Extract Objective/Summary ---
-    # Very basic: concatenate lines in the objective section
-    objective = " ".join(line.get("text", "") for line in objective_lines).strip() if objective_lines else None
-
-    # --- Extract Skills ---
-    skills = _extract_skills(skill_lines)
-
-    # --- Extract Education ---
-    education = _extract_education(education_lines)
-
-    # --- Extract Experience ---
-    experiences = _extract_experience(experience_lines)
-
-    # --- TODO: Extract Projects ---
-    projects = [] # Placeholder for projects
-
-    structured_data = StructuredResume(
-        basic=basic_info,
-        objective=objective,
-        education=education,
-        experiences=experiences,
-        projects=projects,
-        skills=skills
-    )
-
-    logger.info(f"Structured data extraction complete. Found: {len(education)} education, {len(experiences)} experience entries.")
-    return structured_data
-
-# --- Experience/Education/Project Extraction Helpers ---
-
-# Very basic date range regex (YYYY-YYYY, Month YYYY - Month YYYY, Month YYYY - Present)
-# Needs significant improvement for robustness (e.g., handling seasons, various separators)
-DATE_RANGE_REGEX = re.compile(
-    r'(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\b)\s*[-–—to]+\s*(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|Present|Current)\b' +
-    r'|(\b\d{4}\b)\s*[-–—to]+\s*(\b\d{4}|Present|Current)\b' +
-    r'|(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4})\b' # Single date (graduation?)
-    , re.IGNORECASE
-)
-# Simple bullet point start
-BULLET_POINT_REGEX = re.compile(r'^\s*[-•*–—]\s+')
-
-def _extract_experience(lines: List[Dict[str, Any]]) -> List[ExperienceItem]:
-    """Very basic rule-based extraction for experience section."""
-    experiences: List[ExperienceItem] = []
-    if not lines: return experiences
-
-    current_experience: Optional[ExperienceItem] = None
-    current_description_lines: List[str] = []
-
-    for i, line in enumerate(lines):
-        text = line.get("text", "").strip()
-        if not text: continue
-
-        date_match = DATE_RANGE_REGEX.search(text)
-        is_bullet = BULLET_POINT_REGEX.match(text)
-
-        # Heuristic: If a line contains a date range and isn't clearly just a description bullet,
-        # assume it *might* be the start (or part of the header) of a new role.
-        # This logic is very naive and needs improvement.
-        is_likely_role_header = date_match is not None and not is_bullet
-
-        # If we detect a potential new role header and we were processing a previous role
-        if is_likely_role_header and current_experience:
-             # Finalize the previous experience item
-            current_experience.description = "\n".join(current_description_lines).strip()
-            experiences.append(current_experience)
-            current_experience = None
-            current_description_lines = []
-
-        # If it's likely a new role header line (or we haven't started one yet)
-        if is_likely_role_header or not current_experience:
-            # Try to extract details from this line and potentially the previous one
-            # This needs more sophisticated logic to reliably find Title, Company, Location, Dates
-            title = "Unknown Title" # Placeholder
-            company = "Unknown Company" # Placeholder
-            location = None # Placeholder
-            dates = date_match.group(0).strip() if date_match else None
-
-            # Example: Check previous line if current looks just like dates/location
-            if i > 0 and (len(text.split()) < 5 or date_match): # If current line is short/has date
-                prev_text = lines[i-1].get("text","").strip()
-                # Maybe prev line had Title/Company? Very rough guess.
-                if len(prev_text.split()) > 1 and len(prev_text) < 70:
-                    # Simplistic split: assume first part is title, rest is company? Needs work!
-                    parts = prev_text.split(' at ') # Common separator
-                    if len(parts) == 2:
-                        title = parts[0].strip()
-                        company = parts[1].strip()
-                    else:
-                         parts = prev_text.split(',') # Another possibility
-                         if len(parts) >= 2:
-                            title = parts[0].strip()
-                            company = parts[1].strip()
-                         else: # Fallback
-                             title = prev_text # Assume previous line was title/company combined
-
-            # Create a new experience item (even if details are placeholders)
-            current_experience = ExperienceItem(
-                title=title,
-                company=company,
-                location=location,
-                dates=dates,
-                description="" # Will be filled by bullets
-            )
-            current_description_lines = [] # Reset descriptions
-
-        # If it's likely a description bullet point and we have an active role
-        elif is_bullet and current_experience:
-            current_description_lines.append(BULLET_POINT_REGEX.sub("", text)) # Add text without bullet
-
-        # Otherwise, assume it's part of the description for the current role
-        elif current_experience:
-             current_description_lines.append(text)
-
-    # Add the last processed experience item
-    if current_experience:
-        current_experience.description = "\n".join(current_description_lines).strip()
-        experiences.append(current_experience)
-
-    logger.info(f"Extracted {len(experiences)} potential experience entries (basic rules).")
-    return experiences
-
-
-def _extract_education(lines: List[Dict[str, Any]]) -> List[EducationItem]:
-    """Very basic rule-based extraction for education section."""
-    education_list: List[EducationItem] = []
-    if not lines: return education_list
-
-    # Similar naive approach to experience - look for date ranges as potential separators
-    # Assume lines between date ranges belong to one entry.
-    entry_lines: List[str] = []
-    for line in lines:
-        text = line.get("text", "").strip()
-        if not text: continue
-        entry_lines.append(text)
-        date_match = DATE_RANGE_REGEX.search(text)
-        # If a date is found, assume end of an entry (needs refinement)
-        if date_match:
-            if entry_lines:
-                # Very basic parsing of collected lines for one entry
-                degree = entry_lines[0] # Guess: First line is degree
-                institution = entry_lines[1] if len(entry_lines) > 1 else "Unknown Institution" # Guess: Second is institution
-                dates = date_match.group(0).strip()
-                # TODO: Extract location, GPA, details from other lines
-                details = "\n".join(entry_lines[2:]) # Rest are details?
-                education_list.append(EducationItem(
-                    institution=institution,
-                    degree=degree,
-                    dates=dates,
-                    details=details if details else None
-                ))
-                entry_lines = [] # Reset for next entry
-
-    # Process any remaining lines as a potential last entry
-    if entry_lines:
-         degree = entry_lines[0]
-         institution = entry_lines[1] if len(entry_lines) > 1 else "Unknown Institution"
-         # Try finding date in the last line if not found before
-         dates = None
-         if len(entry_lines) > 0:
-             last_line_match = DATE_RANGE_REGEX.search(entry_lines[-1])
-             if last_line_match:
-                 dates = last_line_match.group(0).strip()
-         details = "\n".join(entry_lines[2:])
-         education_list.append(EducationItem(
-                institution=institution,
-                degree=degree,
-                dates=dates,
-                details=details if details else None
-            ))
-
-
-    logger.info(f"Extracted {len(education_list)} potential education entries (basic rules).")
-    return education_list
+    try:
+        # Clean potential markdown fences if the LLM ignored the instruction
+        llm_response_str = llm_response_str.strip().removeprefix("```json").removesuffix("```").strip()
+        # Parse the JSON string from the LLM response
+        parsed_data = json.loads(llm_response_str)
+        # Validate and structure the data using the Pydantic model
+        structured_resume = StructuredResume(**parsed_data)
+        logger.info("Successfully parsed resume text using LLM.")
+        return structured_resume
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode JSON response from LLM: {e}")
+        logger.debug(f"LLM Raw Response: {llm_response_str}")
+        # Return an empty structure or raise an error
+        return StructuredResume(basic=BasicInfo(), objective="Failed to parse LLM JSON response.")
+    except ValidationError as e:
+         logger.error(f"LLM JSON response failed Pydantic validation: {e}")
+         logger.debug(f"LLM Raw Response: {llm_response_str}")
+         # Return an empty structure or raise an error
+         return StructuredResume(basic=BasicInfo(), objective="LLM response failed validation.")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during LLM response processing: {e}", exc_info=True)
+        logger.debug(f"LLM Raw Response: {llm_response_str}")
+        return StructuredResume(basic=BasicInfo(), objective="Unexpected error processing LLM response.")
 
 
 def tailor_content(structured_data: StructuredResume, job_description: str) -> StructuredResume:
@@ -674,22 +324,21 @@ def process_and_tailor_resume(
     """
     logger.info("Starting resume processing and tailoring...")
 
-    # 1. Preprocess text items into lines
-    processed_lines = preprocess_text_items(text_items)
-    if not processed_lines:
-         # Handle case with no processable lines
-         logger.warning("No processable lines found after preprocessing.")
-         # Return empty or minimal structure
-         return StructuredResume(basic=BasicInfo(), objective="Could not process resume content.")
+    # 1. Concatenate text from PdfTextItems
+    # Simple concatenation, preserving some spacing. Might need refinement.
+    # Ensure items are roughly sorted by y then x coordinate if not already done by caller.
+    # text_items.sort(key=lambda item: (item.y, item.x)) # Assuming y, x are available
+    raw_resume_text = "\n".join(item.text for item in text_items) # Use 'text' field from PdfTextItem
 
-    # 2. Identify logical sections
-    sections = identify_sections(processed_lines)
+    if not raw_resume_text.strip():
+        logger.warning("No text content found in provided text items.")
+        return StructuredResume(basic=BasicInfo(), objective="No text content found in resume.")
 
-    # 3. Extract structured data from sections
-    structured_data = extract_structured_data(sections)
+    # 2. Parse raw text into structured data using LLM
+    structured_data = _parse_resume_with_llm(raw_resume_text)
 
-    # 4. Tailor content using LLM (if job description is provided)
-    if job_description and structured_data:
+    # 3. Tailor content using LLM (if job description is provided and parsing was successful)
+    if job_description and structured_data and structured_data.objective != "Failed to parse resume content via LLM.": # Check if parsing succeeded
         structured_data = tailor_content(structured_data, job_description)
     elif not job_description:
         logger.info("No job description provided, skipping LLM tailoring.")
