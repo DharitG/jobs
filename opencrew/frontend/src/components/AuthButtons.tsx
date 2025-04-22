@@ -1,37 +1,66 @@
 'use client';
 
 import React from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
-import { Button } from './ui/button'; // Assuming shadcn/ui button is here
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
+import { Button } from './ui/button';
+import type { Database } from '~/lib/supabase_types'; // Use type-only import
+import { useRouter } from 'next/navigation'; // Import useRouter for navigation
 
 export function AuthButtons() {
-  const { loginWithRedirect, logout, isAuthenticated, isLoading } = useAuth0();
+  const supabase = useSupabaseClient<Database>();
+  const user = useUser();
+  const router = useRouter(); // Initialize router
 
-  if (isLoading) {
-    return <Button variant="outline" disabled>Loading...</Button>; // Use outline or ghost for loading
-  }
+  // Navigate to the sign-in page
+  const handleLogin = () => {
+    router.push('/sign-in');
+  };
+
+  // Navigate to the sign-up page
+  const handleSignUp = () => {
+    router.push('/sign-up');
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error logging out:', error.message);
+      // TODO: Show user-friendly error message
+    }
+    // You might want to redirect after logout, e.g., router.push('/');
+  };
 
   return (
-    <div>
-      {!isAuthenticated && (
-        <Button
-          variant="default" // shadcn's default often maps to primary
-          onClick={() => loginWithRedirect()}
-          className="bg-primary-500 hover:bg-primary-600 text-white shadow-1 hover:-translate-y-px hover:shadow-md transition-all duration-150 ease-out" // Apply design system styles
-        >
-          Log In
-        </Button>
+    <div className="flex items-center gap-4"> {/* Use flex container */}
+      {!user && (
+        <> {/* Fragment to return multiple buttons */}
+          <Button
+            variant="ghost" // Make login look like text
+            onClick={handleLogin}
+            className="text-sm font-medium text-grey-90 hover:text-grey-60 dark:text-neutral-300 dark:hover:text-neutral-100" // Ensure text color visible
+          >
+            Log In
+          </Button>
+          <Button
+            variant="default" // Primary button style for sign up
+            onClick={handleSignUp}
+            className="bg-primary-500 hover:bg-primary-600 text-white shadow-1 hover:-translate-y-px hover:shadow-md transition-all duration-150 ease-out text-sm"
+          >
+            Sign Up
+          </Button>
+        </>
       )}
 
-      {isAuthenticated && (
+      {user && (
         <Button
           variant="secondary" // Or ghost, depending on desired prominence
-          onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-          className="border-primary-500 text-primary-500 hover:bg-primary-500/10 transition-all duration-150 ease-out" // Apply design system styles
+          onClick={handleLogout}
+          className="border-primary-500 text-primary-500 hover:bg-primary-500/10 transition-all duration-150 ease-out text-sm"
         >
           Log Out
         </Button>
       )}
     </div>
   );
-} 
+}

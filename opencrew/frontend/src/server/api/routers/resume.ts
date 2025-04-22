@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { env } from "~/env"; // Using t3-env for backend URL
 import { TRPCError } from "@trpc/server";
-import { getAccessToken } from "@auth0/nextjs-auth0"; // Added import
+// import { getAccessToken } from "@auth0/nextjs-auth0"; // Removed Auth0 import
 
 // Zod schema mirroring Pydantic PdfTextItem
 const PdfTextItemSchema = z.object({
@@ -43,41 +43,22 @@ const ResumeParseResponseSchema = z.object({
 
 
 export const resumeRouter = createTRPCRouter({
-  parseAndTailor: protectedProcedure
+  parseAndTailor: protectedProcedure // Uses Supabase authentication via middleware
     .input(ResumeParseRequestSchema)
     .output(ResumeParseResponseSchema) // Define expected output structure
     .mutation(async ({ ctx, input }) => {
       const backendUrl = env.NEXT_PUBLIC_BACKEND_API_URL; // Get backend URL from env
       const apiEndpoint = `${backendUrl}/api/v1/resumes/parse-and-tailor`;
-      // Retrieve access token for backend API
-      let accessToken: string | undefined;
-      try {
-          // Note: getAccessToken requires {req, res} which might not be directly in ctx depending on setup.
-          // This assumes ctx.req and ctx.res are available, which might need adjustment in trpc.ts context creation.
-          // If ctx.req/res aren't available, this approach won't work server-side directly in tRPC middleware/procedure.
-          // An alternative is passing the token from the client, but less secure.
-          // *** Check your tRPC context setup to ensure req/res are passed ***
-          if (ctx.req && ctx.res) {
-              const tokenResult = await getAccessToken(ctx.req, ctx.res, {
-                  scopes: [], // Add necessary scopes if backend API requires them
-              });
-              accessToken = tokenResult.accessToken;
-          }
-      } catch (error) {
-           console.error("[tRPC] Failed to get access token:", error);
-           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not retrieve access token." });
-      }
 
+      // Access token is guaranteed by protectedProcedure context refinement
+      const accessToken = ctx.accessToken;
 
-      if (!accessToken) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Access token is missing." });
-      }
       if (!backendUrl || backendUrl === "https://your-backend-deployment-url-here") {
            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Backend API URL is not configured." });
       }
 
 
-      console.log(`[tRPC] Calling backend: ${apiEndpoint} for user ${ctx.session.user.sub}, resume ID: ${input.resume_id}`);
+      console.log(`[tRPC] Calling backend: ${apiEndpoint} for user ${ctx.user.id}, resume ID: ${input.resume_id}`);
 
 
       try {
@@ -85,7 +66,7 @@ export const resumeRouter = createTRPCRouter({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
+            "Authorization": `Bearer ${accessToken}`, // Use token from context
           },
           body: JSON.stringify(input),
         });

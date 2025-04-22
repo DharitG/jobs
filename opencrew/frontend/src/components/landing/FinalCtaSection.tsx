@@ -2,14 +2,11 @@
 
 import React from 'react';
 import { Button } from '~/components/ui/button';
-import { useAuth0 } from "@auth0/auth0-react"; // To handle signup redirect
+// import { useAuth0 } from "@auth0/auth0-react"; // REMOVED - Unused Auth0 import
 import { cn } from '~/lib/utils';
 
 export function FinalCtaSection() {
-  const { loginWithRedirect } = useAuth0();
-
-  // Redirect to signup flow
-  const handleGetStarted = () => loginWithRedirect({ authorizationParams: { screen_hint: "signup" } });
+  // Removed unused Auth0 hook call and handler function
 
   return (
     <section

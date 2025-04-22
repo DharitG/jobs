@@ -1,7 +1,8 @@
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Enum as SQLEnum, Date, DateTime, func, Index
+import uuid # Import uuid module for default generation
 from sqlalchemy import Column, Integer, String, Boolean, Enum as SQLEnum, Date, DateTime, func
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import UUID # Import UUID type
 
 Base = declarative_base()
 
@@ -14,7 +15,8 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    auth0_sub = Column(String, unique=True, index=True, nullable=False) # Auth0 Subject ID
+    # auth0_sub = Column(String, unique=True, index=True, nullable=False) # Replaced Auth0 Subject ID
+    supabase_user_id = Column(UUID(as_uuid=True), unique=True, index=True, nullable=False) # Supabase User ID (UUID)
     email = Column(String, unique=True, index=True, nullable=False)
     # hashed_password = Column(String, nullable=False) # Removed for Auth0
     is_active = Column(Boolean, default=True)

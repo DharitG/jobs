@@ -1,40 +1,40 @@
 "use client";
 
-import { Auth0Provider } from "@auth0/auth0-react";
+import { useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { TRPCReactProvider } from "~/trpc/react";
 import { type ReactNode } from 'react';
-
-// Read environment variables directly within the Client Component
-const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
-const auth0ClientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
-const auth0Audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE;
+import type { Database } from '~/lib/supabase_types'; // Assuming you'll create this types file
 
 interface ClientProvidersProps {
   children: ReactNode;
 }
 
+// Read Supabase environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
 export function ClientProviders({ children }: ClientProvidersProps) {
-  // Basic check within the component
-  if (!auth0Domain || !auth0ClientId || !auth0Audience) {
-    console.error("Auth0 environment variables missing in ClientProviders!");
-    return null; // Return null if config is missing
+  // Basic check for Supabase config
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Supabase environment variables NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are missing!");
+    // Optionally return a loading state or an error message component
+    return null;
   }
 
-  // No need to manually handle redirectUri here,
-  // the Auth0 SDK handles the callback URL automatically.
+  // useState is needed because createClientComponentClient can only be called
+  // inside a Client Component, and we need to pass it to the provider.
+  const [supabaseClient] = useState(() =>
+    createClientComponentClient<Database>({ // Use your Database types if available
+      supabaseUrl: supabaseUrl!,
+      supabaseKey: supabaseAnonKey!,
+    })
+  );
 
   return (
-    <Auth0Provider
-      domain={auth0Domain}
-      clientId={auth0ClientId}
-      authorizationParams={{
-        // redirect_uri is handled automatically by the SDK on callback
-        audience: auth0Audience,
-      }}
-      // The SDK will automatically handle the redirect by checking window.location
-      // upon initialization after the redirect from Auth0.
-    >
+    <SessionContextProvider supabaseClient={supabaseClient}>
       <TRPCReactProvider>{children}</TRPCReactProvider>
-    </Auth0Provider>
+    </SessionContextProvider>
   );
 }

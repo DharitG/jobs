@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+// import { useAuth0 } from "@auth0/auth0-react"; // Removed Auth0
+import { AuthButtons } from "~/components/AuthButtons"; // Import AuthButtons
 import Link from "next/link"; // Keep Link for the logo text
 import {
   Navbar as ResizableNavbarRoot, // Renamed to avoid conflict with the component name
@@ -16,7 +17,7 @@ import {
 import { cn } from "~/lib/utils"; // Keep cn if needed, though the new component handles its own styling
 
 export function Navbar() {
-  const { loginWithRedirect } = useAuth0();
+  // const { loginWithRedirect } = useAuth0(); // Removed Auth0
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
@@ -31,15 +32,7 @@ export function Navbar() {
     // Add other nav items if needed
   ];
 
-  const handleLogin = () => {
-    loginWithRedirect();
-    setIsMobileMenuOpen(false); // Close mobile menu on action
-  };
-
-  const handleGetStarted = () => {
-    loginWithRedirect({ authorizationParams: { screen_hint: "signup" } });
-    setIsMobileMenuOpen(false); // Close mobile menu on action
-  };
+  // Removed handleLogin and handleGetStarted as AuthButtons handles this now
 
   return (
     // Use the ResizableNavbarRoot component. Adjust top positioning if needed (original was top-0, new is top-20 default)
@@ -53,14 +46,8 @@ export function Navbar() {
         </Link>
         <NavItems items={navItems} onItemClick={() => setIsMobileMenuOpen(false)} />
         <div className="relative z-20 flex items-center gap-4">
-          {/* Use NavbarButton from resizable-navbar, map variants if needed */}
-          {/* Assuming 'secondary' maps to ghost/text-like and 'primary' maps to default */}
-          <NavbarButton onClick={handleLogin} variant="secondary" className="text-sm font-medium text-grey-40 hover:text-grey-90 dark:text-neutral-300">
-            Login
-          </NavbarButton>
-          <NavbarButton onClick={handleGetStarted} variant="primary" className="text-sm"> {/* Use primary variant from new component */}
-            Get Started
-          </NavbarButton>
+           {/* Render AuthButtons which handles login/logout */}
+          <AuthButtons />
         </div>
       </NavBody>
 
@@ -86,13 +73,8 @@ export function Navbar() {
             </a>
           ))}
           <div className="flex w-full flex-col gap-4 pt-4">
-             {/* Use NavbarButton from resizable-navbar */}
-            <NavbarButton onClick={handleLogin} variant="secondary" className="w-full text-sm font-medium text-grey-40 hover:text-grey-90 dark:text-neutral-300">
-              Login
-            </NavbarButton>
-            <NavbarButton onClick={handleGetStarted} variant="primary" className="w-full text-sm">
-              Get Started
-            </NavbarButton>
+             {/* Render AuthButtons which handles login/logout */}
+            <AuthButtons />
           </div>
         </MobileNavMenu>
       </MobileNav>

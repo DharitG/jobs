@@ -8,12 +8,12 @@ export const env = createEnv({
    */
   server: {
     NODE_ENV: z.enum(["development", "test", "production"]),
-    // Auth0 server-side variables required by nextjs-auth0
-    AUTH0_SECRET: z.string().min(1),
-    AUTH0_BASE_URL: z.string().url(),
-    AUTH0_ISSUER_BASE_URL: z.string().url(),
-    AUTH0_CLIENT_ID: z.string().min(1),
-    AUTH0_CLIENT_SECRET: z.string().min(1),
+    // Auth0 server-side variables REMOVED
+    // AUTH0_SECRET: z.string().min(1),
+    // AUTH0_BASE_URL: z.string().url(),
+    // AUTH0_ISSUER_BASE_URL: z.string().url(),
+    // AUTH0_CLIENT_ID: z.string().min(1),
+    // AUTH0_CLIENT_SECRET: z.string().min(1),
   },
 
   /**
@@ -24,10 +24,13 @@ export const env = createEnv({
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
     NEXT_PUBLIC_BACKEND_API_URL: z.string().url(),
-    NEXT_PUBLIC_AUTH0_DOMAIN: z.string().min(1),
-    NEXT_PUBLIC_AUTH0_AUDIENCE: z.string().min(1), // Audience needed for frontend to request tokens for backend API
-    // We need the Client ID for the client-side Auth0Provider
-    NEXT_PUBLIC_AUTH0_CLIENT_ID: z.string().min(1),
+    // Supabase client-side vars ADDED
+    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+    // Auth0 client-side variables REMOVED
+    // NEXT_PUBLIC_AUTH0_DOMAIN: z.string().min(1),
+    // NEXT_PUBLIC_AUTH0_AUDIENCE: z.string().min(1),
+    // NEXT_PUBLIC_AUTH0_CLIENT_ID: z.string().min(1),
   },
 
   /**
@@ -36,18 +39,22 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
-    // Server-side Auth0
-    AUTH0_SECRET: process.env.AUTH0_SECRET,
-    AUTH0_BASE_URL: process.env.AUTH0_BASE_URL,
-    AUTH0_ISSUER_BASE_URL: process.env.AUTH0_ISSUER_BASE_URL,
-    AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
-    AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
+    // Server-side Auth0 REMOVED
+    // AUTH0_SECRET: process.env.AUTH0_SECRET,
+    // AUTH0_BASE_URL: process.env.AUTH0_BASE_URL,
+    // AUTH0_ISSUER_BASE_URL: process.env.AUTH0_ISSUER_BASE_URL,
+    // AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
+    // AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
     // Client-side vars
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
     NEXT_PUBLIC_BACKEND_API_URL: process.env.NEXT_PUBLIC_BACKEND_API_URL,
-    NEXT_PUBLIC_AUTH0_DOMAIN: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
-    NEXT_PUBLIC_AUTH0_AUDIENCE: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE, // Added back
-    NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
+    // Supabase Client-side vars ADDED
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    // Auth0 Client-side REMOVED
+    // NEXT_PUBLIC_AUTH0_DOMAIN: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
+    // NEXT_PUBLIC_AUTH0_AUDIENCE: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE, // Added back
+    // NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

@@ -1,3 +1,4 @@
+import uuid # Import uuid
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 
@@ -10,19 +11,20 @@ def get_user(db: Session, user_id: int) -> models.User | None:
 def get_user_by_email(db: Session, email: str) -> models.User | None:
     return db.query(models.User).filter(models.User.email == email).first()
 
-def get_user_by_auth0_sub(db: Session, auth0_sub: str) -> models.User | None:
-    """Gets a user by their Auth0 subject ID."""
-    return db.query(models.User).filter(models.User.auth0_sub == auth0_sub).first()
+# Renamed function and updated type/column
+def get_user_by_supabase_id(db: Session, supabase_id: uuid.UUID) -> models.User | None:
+    """Gets a user by their Supabase user ID."""
+    return db.query(models.User).filter(models.User.supabase_user_id == supabase_id).first()
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
 
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
-    """Creates a user based on Auth0 info (no password)."""
+    """Creates a user based on Supabase info (no password)."""
     # hashed_password = get_password_hash(user.password) # Removed for Auth0
     db_user = models.User(
         email=user.email,
-        auth0_sub=user.auth0_sub,
+        supabase_user_id=user.supabase_user_id, # Changed from auth0_sub
         full_name=user.full_name
         # Initialize streak fields? Default is 0 and None in model.
     )
@@ -34,7 +36,7 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
 def update_user(db: Session, db_user: models.User, user_in: schemas.UserUpdate) -> models.User:
     """Updates user profile information (e.g., full_name)."""
     user_data = user_in.model_dump(exclude_unset=True)
-    # Password update logic removed for Auth0
+    # Password update logic removed
 
     for field, value in user_data.items():
         setattr(db_user, field, value)
@@ -81,5 +83,5 @@ def update_user_streak(db: Session, db_user: models.User) -> models.User:
 # Optional: Delete functions can be added here later
 # def delete_user(...):
 
-# Authentication helper removed as Auth0 handles authentication
+# Authentication helper removed
 # def authenticate_user(...):

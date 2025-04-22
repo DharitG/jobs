@@ -1,3 +1,4 @@
+import uuid # Import uuid for UUID type
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
@@ -5,7 +6,8 @@ from ..models.user import SubscriptionTier # Import the enum
 
 # Shared properties
 class UserBase(BaseModel):
-    auth0_sub: str # Added Auth0 Subject ID
+    # auth0_sub: str # Replaced Auth0 Subject ID
+    supabase_user_id: uuid.UUID # Supabase User ID
     email: EmailStr
     first_name: str | None = None
     last_name: str | None = None
@@ -13,7 +15,7 @@ class UserBase(BaseModel):
     phone_number: str | None = None
     linkedin_url: str | None = None
 
-# Properties to receive via API on creation (Now likely handled by Auth0 flow, but schema might be used internally)
+# Properties to receive via API on creation (Now likely handled by Supabase flow, but schema might be used internally)
 class UserCreate(UserBase):
     # password: str # Removed for Auth0
     pass # Keep structure, might be used for internal creation if needed
@@ -27,7 +29,7 @@ class UserUpdate(BaseModel):
     phone_number: str | None = None
     linkedin_url: str | None = None
     is_active: bool | None = None # Activation status
-    
+
     # Add Stripe subscription fields for updates (likely triggered by webhooks)
     subscription_tier: SubscriptionTier | None = None
     stripe_customer_id: str | None = None
@@ -36,7 +38,7 @@ class UserUpdate(BaseModel):
     subscription_current_period_end: datetime | None = None
 
 # Properties shared by models stored in DB
-class UserInDBBase(UserBase):
+class UserInDBBase(UserBase): # Inherits supabase_user_id from UserBase
     id: int
     is_active: bool
     subscription_tier: SubscriptionTier # Add tier here
@@ -47,10 +49,10 @@ class UserInDBBase(UserBase):
         from_attributes = True # Pydantic V2 uses this instead of orm_mode
 
 # Properties to return to client
-class User(UserInDBBase):
+class User(UserInDBBase): # Inherits supabase_user_id from UserInDBBase -> UserBase
     pass # Inherits all from UserInDBBase
 
 # Properties stored in DB (includes fields not usually returned to client)
-class UserInDB(UserInDBBase):
+class UserInDB(UserInDBBase): # Inherits supabase_user_id from UserInDBBase -> UserBase
     # hashed_password: str # Removed for Auth0
     pass # Currently no DB-only fields beyond UserInDBBase after removing password
