@@ -14,6 +14,8 @@ celery_app = Celery(
 )
 
 # Optional Celery configuration (can be loaded from settings too)
+from celery.schedules import crontab # Import crontab
+
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],  # Ignore other content
@@ -24,6 +26,14 @@ celery_app.conf.update(
     # task_routes = {
     #     'app.workers.tasks.process_payment': {'queue': 'payments'},
     # }
+    beat_schedule = {
+        'run-scrapers-every-6-hours': {
+            'task': 'tasks.run_all_scrapers', # The name of the task defined in tasks.py
+            'schedule': crontab(minute=0, hour='*/6'), # Run every 6 hours (at 00:00, 06:00, 12:00, 18:00 UTC)
+            # Alternatively, use seconds: 'schedule': 6 * 60 * 60.0, # Run every 6 hours (in seconds)
+            # 'args': (), # Add arguments if the task requires any
+        },
+    }
 )
 
 if __name__ == "__main__":
