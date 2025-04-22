@@ -28,6 +28,7 @@ class Application(Base):
     status_last_updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     applied_at = Column(DateTime(timezone=True), nullable=True) # Timestamp when application was actually sent
     notes = Column(Text, nullable=True)
+    screenshot_url = Column(String, nullable=True) # Store URL/path to final screenshot
 
     # Relationships (adjust back_populates as needed)
     user = relationship("User", back_populates="applications")

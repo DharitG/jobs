@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     SLACK_WEBHOOK_URL: str | None = os.getenv("SLACK_WEBHOOK_URL")
 
 
+    # AWS S3 for Artifact Storage
+    AWS_ACCESS_KEY_ID: str | None = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_REGION_NAME: str = os.getenv("AWS_REGION_NAME", "us-east-1") # Default region if not set
+    S3_BUCKET_NAME: str | None = os.getenv("S3_BUCKET_NAME")
+
+
     class Config:
         case_sensitive = True
         env_file = ".env"

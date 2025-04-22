@@ -14,6 +14,7 @@ requests
 beautifulsoup4
 playwright
 playwright-stealth # Added for stealth browser automation
+browser-use==0.1.41 # AI Agent Browser Control
 qdrant-client
 sentence-transformers
 numpy
@@ -29,3 +30,5 @@ scikit-learn
 openai
 reportlab
 deepdiff
+
+boto3 # AWS SDK for Python

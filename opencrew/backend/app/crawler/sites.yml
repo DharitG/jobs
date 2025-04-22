@@ -1453,3 +1453,22 @@
     - zynga
 
 # ----- END: Appended from Master Company-ATS-Identifier Table -----
+
+# ----- START: Appended from Second Company-ATS Table -----
+# --- Additional Lever Sites (using API) ---
+- name: Aptiv
+  source: lever
+  mode: api
+  seeds:
+    - aptiv
+- name: Nielsen
+  source: lever
+  mode: api
+  seeds:
+    - nielsen
+- name: PointClickCare
+  source: lever
+  mode: api
+  seeds:
+    - pointclickcare
+# ----- END: Appended from Second Company-ATS Table -----

@@ -55,6 +55,6 @@ COPY --chown=appuser:appuser . .
 EXPOSE 8000
 
 # Set the entrypoint command
-# Run migrations automatically here if desired, e.g., using a script
-# CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations automatically before starting the server
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1"]
+# Add --workers 1 for better compatibility with Uvicorn in containers, adjust if needed

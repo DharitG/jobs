@@ -81,9 +81,11 @@ Core underlying systems, operational tasks, and compliance.
 
 *   ⬜ **RBAC:** Implement Role-Based Access Control using Auth0 roles/permissions, protecting relevant API endpoints.
 *   🚧 **Configuration Management:** Ensure all secrets and environment-specific settings are loaded via `core/config.py` and not hardcoded. *(Partially verified)*.
+    *   ⬜ **AWS Credentials:** Configure AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) securely in the backend environment (e.g., via .env or secrets manager).
 *   🚧 **Infrastructure (`infra/docker-compose.yml`):** Refine Docker Compose for robustness, potentially add health checks for Qdrant. *(Update: Pinned Qdrant, removed dev volumes/reload)*.
 *   ⬜ **Deployment Pipeline:** Configure CI/CD (e.g., GitHub Actions to Render/AWS).
 *   ⬜ **Managed Services:** Setup and configure managed Postgres/Redis/Qdrant for production.
+    *   ⬜ **AWS S3 Setup:** Create S3 bucket for storing application screenshots/artifacts. Configure appropriate permissions (e.g., public read access or CloudFront distribution).
 *   ⬜ **Observability:** Setup Prometheus + Grafana (or Render Metrics), Logging Aggregation, Sentry Error Tracking.
 *   ⬜ **Audit Logging:** Implement basic audit logging for critical actions.
 *   ⬜ **Compliance:** Implement GDPR/CCPA Data Deletion endpoint/logic. Verify PII encryption at rest. Implement Scraper ToS Checks/API fallback.

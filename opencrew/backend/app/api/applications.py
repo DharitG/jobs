@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import FileResponse
+import os # For path validation
+from pathlib import Path # For path validation
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -95,10 +98,8 @@ def update_application(
     application_in: schemas.ApplicationUpdate, 
     current_user: models.User = Depends(get_current_user)
 ):
-    """Update an application (e.g., status, notes), ensuring it belongs to the current user."""
-    db_application = crud.application.get_application(db, application_id=application_id)
-    if db_application is None:
     """Update a job application. Triggers auto-apply task if status changes to APPLYING and quota allows."""
+    # Fetch the application ensuring it belongs to the current user
     db_application = crud.application.get_application(
         db=db, application_id=application_id, user_id=current_user.id
     )
@@ -149,3 +150,39 @@ async def delete_application_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
     # No content is returned on successful deletion
     return None 
+
+
+@router.get("/{application_id}/screenshot")
+async def get_application_screenshot(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get the final screenshot associated with a specific application."""
+    db_application = crud.application.get_application(db, application_id=application_id)
+
+    if db_application is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    if db_application.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this application")
+    if not db_application.screenshot_url:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Screenshot not found for this application")
+
+    screenshot_path = Path(db_application.screenshot_url)
+
+    # Basic security check: Ensure the file exists and is within the expected artifact directory
+    # This prevents accessing arbitrary files if the screenshot_url was somehow manipulated.
+    # We rely on the fact that save_screenshot_from_history saves to a known temp dir structure.
+    expected_artifact_dir = Path(tempfile.gettempdir()) / "opencrew_artifacts"
+    try:
+        # Ensure the path is absolute and resolves correctly
+        abs_path = screenshot_path.resolve(strict=True)
+        # Ensure the resolved path is within the allowed directory
+        if not abs_path.is_file() or not abs_path.is_relative_to(expected_artifact_dir.resolve(strict=True)):
+             raise FileNotFoundError # Treat as not found if outside allowed dir or not a file
+             
+    except (FileNotFoundError, Exception) as e:
+        logger.error(f"Screenshot file not found or invalid path for app {application_id}: {screenshot_path}, Error: {e}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Screenshot file not found or path is invalid")
+
+    return FileResponse(str(abs_path), media_type="image/png")
