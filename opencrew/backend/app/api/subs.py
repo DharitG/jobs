@@ -6,12 +6,13 @@ from sqlalchemy.orm import Session
 import stripe # Import stripe library
 
 import os # Need os for FRONTEND_BASE_URL placeholder
-from .. import crud, models, schemas
-from ..schemas.payment import CheckoutRequest # Import the new input schema
-from ..schemas.user import UserUpdate # Import UserUpdate schema
-from ..core import security # Assuming security module handles user auth
-from ..db.session import get_db
-from ..core.config import settings # Import settings for API keys
+from app import crud, schemas # Import crud and schemas
+from app.models.user import User, SubscriptionTier # Import User and Enum
+from app.schemas.payment import CheckoutRequest # Absolute import
+from app.schemas.user import UserUpdate # Absolute import
+from app.core import security # Absolute import
+from app.db.session import get_db # Absolute import
+from app.core.config import settings # Absolute import
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -30,7 +31,7 @@ else:
 async def create_checkout_session(
     checkout_request: CheckoutRequest, # Use the input schema
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_active_user) # Assuming this dependency gets the authenticated user
+    current_user: User = Depends(security.get_current_active_user) # Use imported User type
 ):
     """
     Creates a Stripe Checkout session for the user to subscribe.
@@ -166,14 +167,16 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                  return {"status": "error", "detail": "Missing Stripe IDs"}
 
             # --- Determine Subscription Tier ---
-            # TODO: This is crucial. We need to map the Price ID from the checkout session
+            # We need to map the Price ID from the checkout session
             # back to our internal SubscriptionTier enum.
-            
+
             # --- Tier Mapping Logic ---
-            new_tier = models.SubscriptionTier.FREE # Default to FREE if lookup fails
+            new_tier = SubscriptionTier.FREE # Default to FREE if lookup fails (Use imported Enum)
+            import json # Make sure json is imported for tier_map parsing
+
             try:
                 # Retrieve the line items from the session
-                line_items = stripe.checkout.Session.list_line_items(session.id, limit=1)
+                line_items = stripe.checkout.Session.list_line_items(session.id, limit=1) # Requires stripe import
                 if line_items and line_items.data:
                     price_id = line_items.data[0].price.id
                     logger.info(f"Found price_id '{price_id}' in checkout session {session.id}")
@@ -183,7 +186,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                     tier_name = tier_map.get(price_id)
                     
                     if tier_name:
-                        new_tier = models.SubscriptionTier(tier_name) # Convert string to enum
+                        new_tier = SubscriptionTier(tier_name) # Convert string to enum (Use imported Enum)
                         logger.info(f"Mapped price_id '{price_id}' to tier '{new_tier}' for user {user_id}.")
                     else:
                          logger.error(f"Could not map price_id '{price_id}' to a known tier for user {user_id}. Check STRIPE_PRICE_ID_TIER_MAP_JSON config.")
@@ -230,14 +233,16 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             new_status = subscription.get('status') # e.g., "active", "past_due", "canceled", "unpaid"
             
             # Determine the tier from the price ID (important if plan changes)
-            new_tier = models.SubscriptionTier.FREE # Default
+            new_tier = SubscriptionTier.FREE # Default (Use imported Enum)
+            import json # Make sure json is imported
+
             try:
                 if subscription.items and subscription.items.data:
                     price_id = subscription.items.data[0].price.id
                     tier_map = json.loads(settings.STRIPE_PRICE_ID_TIER_MAP_JSON)
                     tier_name = tier_map.get(price_id)
                     if tier_name:
-                        new_tier = models.SubscriptionTier(tier_name)
+                        new_tier = SubscriptionTier(tier_name) # Use imported Enum
                     else:
                         logger.warning(f"Subscription update: Could not map price_id '{price_id}' to tier for sub {stripe_subscription_id}.")
                 else:
@@ -295,7 +300,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                  
             # Prepare update - Revert to Free tier, clear Stripe info
             user_update_data = UserUpdate(
-                subscription_tier=models.SubscriptionTier.FREE,
+                subscription_tier=SubscriptionTier.FREE, # Use imported Enum
                 stripe_subscription_status='canceled', # Or 'deleted', depending on desired state representation
                 stripe_subscription_id=None, # Clear the subscription ID
                 subscription_current_period_end=None # Clear the period end

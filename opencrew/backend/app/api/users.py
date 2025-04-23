@@ -2,10 +2,11 @@ import uuid # Import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ... import crud, models, schemas
-from ...db.session import get_db
+from app import crud, schemas # Import crud and schemas
+from app.models.user import User # Import User model specifically
+from app.db.session import get_db # Absolute import
 # Import the new Supabase dependency function
-from ...core.security import get_current_supabase_user_id
+from app.core.security import get_current_supabase_user_id # Absolute import
 
 router = APIRouter()
 
@@ -15,7 +16,7 @@ async def get_current_active_user(
     # Use the new dependency to get the Supabase user ID (UUID)
     current_user_id: uuid.UUID = Depends(get_current_supabase_user_id),
     db: Session = Depends(get_db)
-) -> models.User:
+) -> User: # Use the directly imported User type
     """
     Dependency that verifies Supabase token, gets the user ID (UUID),
     and fetches the corresponding user from the database.
@@ -40,7 +41,7 @@ async def get_current_active_user(
 @router.get("/me", response_model=schemas.User)
 async def read_users_me(
     # This dependency now provides the user model fetched via Supabase ID
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user) # Use the directly imported User type
 ):
     """Fetch the profile of the currently logged-in user."""
     return current_user

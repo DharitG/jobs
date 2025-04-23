@@ -29,8 +29,12 @@ load_dotenv() # Load .env file for API keys
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from .. import models, schemas, crud
-from ..db.session import SessionLocal # To get DB sessions if needed
+from app import schemas, crud # Absolute imports
+from app.models.application import Application, ApplicationStatus # Import specific models/enums
+from app.models.user import User, SubscriptionTier # Import specific models/enums
+from app.models.job import Job # Import specific models/enums
+from app.models.resume import Resume # Import specific models/enums
+from app.db.session import SessionLocal # To get DB sessions if needed
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,7 +45,7 @@ import tempfile
 import shutil # Keep for potential temp file cleanup if needed
 import boto3 # Import AWS SDK
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError # Import specific exceptions
-from ..core.config import settings # Import settings
+from app.core.config import settings # Absolute import
 
 # ARTIFACT_DIR = Path(tempfile.gettempdir()) / "opencrew_artifacts" # No longer saving locally by default
 # ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -169,17 +173,17 @@ async def apply_to_job_async(db: Session, application_id: int):
     Async function to handle the auto-application process for a single job application record.
     """
     logger.info(f"Starting async auto-apply process for application ID: {application_id}")
-    application: models.Application | None = None
+    application: Application | None = None # Use imported Application type
     try:
         # --- Fetch Application Details ---
-        application = db.query(models.Application).filter(models.Application.id == application_id).first()
+        application = db.query(Application).filter(Application.id == application_id).first() # Use imported Application type
         if not application:
             logger.error(f"Application not found for ID: {application_id}")
             return
         if not application.user or not application.job or not application.resume:
             logger.error(f"Missing user, job, or resume for application ID: {application_id}")
             # Update status to error in DB
-            application.status = models.ApplicationStatus.ERROR
+            application.status = ApplicationStatus.ERROR # Use imported Enum
             application.notes = "Missing required data (user, job, or resume)."
             db.add(application)
             db.commit()
@@ -187,7 +191,7 @@ async def apply_to_job_async(db: Session, application_id: int):
         # Check for original_filepath (where S3 key is stored) instead of file_path
         if not application.resume.original_filepath:
             logger.error(f"Resume original_filepath (S3 key) not found for resume ID: {application.resume.id}, application {application_id}")
-            application.status = models.ApplicationStatus.ERROR
+            application.status = ApplicationStatus.ERROR # Use imported Enum
             application.notes = "Resume S3 key missing."
             db.add(application)
             db.commit()
@@ -201,7 +205,7 @@ async def apply_to_job_async(db: Session, application_id: int):
         remaining_quota = check_user_quota(db=db, user=user)
         if remaining_quota <= 0:
             logger.warning(f"User {user.id} has no auto-apply quota remaining. Skipping application {application_id}.")
-            application.status = models.ApplicationStatus.ERROR # Or a specific 'QUOTA_EXCEEDED' status
+            application.status = ApplicationStatus.ERROR # Use imported Enum (Or a specific 'QUOTA_EXCEEDED' status)
             application.notes = "Auto-apply quota exceeded for the month."
             db.add(application)
             db.commit()
@@ -210,7 +214,7 @@ async def apply_to_job_async(db: Session, application_id: int):
         logger.info(f"User {user.id} has {remaining_quota} auto-apply quota remaining. Proceeding with application {application_id}.")
 
         # --- Elite Tier Throttling (Placeholder) ---
-        if user.subscription_tier == models.SubscriptionTier.ELITE:
+        if user.subscription_tier == SubscriptionTier.ELITE: # Use imported Enum
             # TODO: Implement actual throttling logic (e.g., check last N application timestamps)
             throttle_delay_seconds = 5.0 + (time.time() % 5) # Example: Wait 5-10 seconds
             logger.info(f"Elite tier user {user.id}. Applying placeholder throttle delay of {throttle_delay_seconds:.1f} seconds.")
@@ -231,7 +235,7 @@ async def apply_to_job_async(db: Session, application_id: int):
         if not resume_s3_key:
              # This case should have been caught earlier, but double-check
              logger.error(f"Critical: Resume S3 key missing before agent execution for app {application_id}.")
-             application.status = models.ApplicationStatus.ERROR
+             application.status = ApplicationStatus.ERROR # Use imported Enum
              application.notes = "Critical: Resume S3 key missing just before agent call."
              db.add(application)
              db.commit()
@@ -241,8 +245,30 @@ async def apply_to_job_async(db: Session, application_id: int):
         agent_success = False
         agent_message = "Agent execution started."
         agent_error = None
+        temp_resume_path = None # Initialize variable
 
         try:
+            # --- Download Resume from S3 to Temporary File ---
+            # Check S3 configuration first
+            if not settings.S3_BUCKET_NAME or not settings.AWS_ACCESS_KEY_ID or not settings.AWS_SECRET_ACCESS_KEY:
+                 logger.error(f"S3 credentials or bucket name not configured. Cannot download resume for app {application_id}.")
+                 raise ValueError("S3 storage not configured for resume download.") # Raise error to stop processing
+
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_REGION_NAME
+            )
+            # Create a temporary file with the correct extension (e.g., .pdf)
+            file_suffix = Path(resume_s3_key).suffix or '.pdf' # Get suffix from key or default
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file_suffix) as temp_file:
+                temp_resume_path = temp_file.name # Store the path
+                logger.info(f"Downloading resume from s3://{settings.S3_BUCKET_NAME}/{resume_s3_key} to {temp_resume_path} for app {application_id}")
+                s3_client.download_file(settings.S3_BUCKET_NAME, resume_s3_key, temp_resume_path)
+                logger.info(f"Successfully downloaded resume to {temp_resume_path}")
+            # --- End Download ---
+
             # Define the task for the AI agent
             # This prompt needs careful crafting!
             profile_str = "\n".join([f"- {k}: {v}" for k, v in user_profile.items() if v])
@@ -252,12 +278,12 @@ async def apply_to_job_async(db: Session, application_id: int):
             Applicant Profile:
             {profile_str}
 
-            Resume S3 Key: {resume_s3_key} # Changed from file_path to S3 key
+            Resume File Path: {temp_resume_path} # Use the downloaded local path
 
             Instructions:
             1. Navigate to the job URL: {job.url}
             2. Fill out the application form using the provided applicant profile information.
-            3. **Important:** You need to handle resume upload. The resume is stored in AWS S3 with the key: **{resume_s3_key}**. You might need to download this file first to a temporary location accessible by the browser instance before uploading it to the job application form. Standard S3 access via AWS credentials might be required. Ensure the file upload element on the job site is correctly targeted.
+            3. **Important:** Handle resume upload. The resume file is located at the local path: **{temp_resume_path}**. Use this path when interacting with the file upload element on the job site.
             4. Handle any standard questions (like work authorization, sponsorships) appropriately based on typical US-based applicant information unless specified otherwise in the profile. You may need to select "Yes" for authorization and "No" for sponsorship if unsure and fields are required.
             5. Answer basic EEOC questions (Gender, Race, Ethnicity, Veteran Status, Disability) by selecting "Decline to self-identify" or similar options if available and required.
             6. Do NOT attempt to answer complex custom questions requiring free-text input (e.g., "Why do you want to work here?", salary expectations) unless the answer is directly in the profile. Skip them if possible, otherwise stop and report the blockage.
@@ -363,11 +389,11 @@ async def apply_to_job_async(db: Session, application_id: int):
 
         # --- Update Application Status Based on Agent Outcome ---
         if agent_success:
-            application.status = models.ApplicationStatus.APPLIED
+            application.status = ApplicationStatus.APPLIED # Use imported Enum
             application.applied_at = datetime.utcnow()
             application.notes = agent_message # Use message derived from history
         else:
-            application.status = models.ApplicationStatus.ERROR # Or a more specific failure status
+            application.status = ApplicationStatus.ERROR # Use imported Enum (Or a more specific failure status)
             # Combine message and error details for notes
             application.notes = f"AI Agent failed. Reason: {agent_message}"
             if agent_error_details:
@@ -389,7 +415,7 @@ async def apply_to_job_async(db: Session, application_id: int):
         logger.exception(f"Critical error during async auto-apply for application {application_id}", exc_info=e)
         if application: # Attempt to mark as error if possible
             try:
-                application.status = models.ApplicationStatus.ERROR
+                application.status = ApplicationStatus.ERROR # Use imported Enum
                 application.notes = f"Critical error during execution: {e}"
                 db.add(application)
                 db.commit()
@@ -402,19 +428,19 @@ async def apply_to_job_async(db: Session, application_id: int):
 
 # --- Quota Checking Logic (Unchanged) ---
 QUOTA_LIMITS = {
-    models.SubscriptionTier.FREE: 50,
-    models.SubscriptionTier.PRO: 10000,  # Effectively unlimited
-    models.SubscriptionTier.ELITE: 10000, # Effectively unlimited
+    SubscriptionTier.FREE: 50, # Use imported Enum
+    SubscriptionTier.PRO: 10000,  # Effectively unlimited
+    SubscriptionTier.ELITE: 10000, # Effectively unlimited
 }
 
-def check_user_quota(db: Session, user: models.User) -> int:
+def check_user_quota(db: Session, user: User) -> int: # Use imported User type
     """
     Checks the remaining auto-apply quota for the user in the current calendar month.
     Returns the number of applications remaining.
     """
     limit = QUOTA_LIMITS.get(user.subscription_tier, 0)
     # Check for Pro or Elite tiers specifically for unlimited quota
-    if user.subscription_tier in [models.SubscriptionTier.PRO, models.SubscriptionTier.ELITE]:
+    if user.subscription_tier in [SubscriptionTier.PRO, SubscriptionTier.ELITE]: # Use imported Enum
         logger.info(f"User {user.id} has '{user.subscription_tier}' tier. Granting unlimited auto-apply quota.")
         return 99999 # Return a very large number to signify unlimited
 
@@ -423,11 +449,11 @@ def check_user_quota(db: Session, user: models.User) -> int:
     start_of_month = datetime(now.year, now.month, 1)
 
     try:
-        applied_count = db.query(func.count(models.Application.id))\
+        applied_count = db.query(func.count(Application.id)) \
             .filter(
-                models.Application.user_id == user.id,
-                models.Application.status == models.ApplicationStatus.APPLIED,
-                models.Application.applied_at >= start_of_month
+                Application.user_id == user.id,
+                Application.status == ApplicationStatus.APPLIED,
+                Application.applied_at >= start_of_month
             ).scalar() or 0
 
         remaining = limit - applied_count

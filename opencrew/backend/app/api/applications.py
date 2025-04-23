@@ -4,13 +4,18 @@ import os # For path validation
 from pathlib import Path # For path validation
 from sqlalchemy.orm import Session
 from typing import List
+import logging
+import tempfile
 
-from ... import crud, models, schemas
-from ...db.session import get_db
-from .users import get_current_user # Import dependency for current user
-from ...workers.tasks import trigger_auto_apply # Import the Celery task
-from ...models.application import ApplicationStatus # Import status enum
+from app import crud, schemas # Import crud and schemas
+from app.models.user import User # Import User model specifically
+from app.db.session import get_db # Absolute import
+from app.api.users import get_current_user # Absolute import
+from app.workers.tasks import trigger_auto_apply # Absolute import
+from app.models.application import ApplicationStatus # Absolute import
 
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/", response_model=schemas.Application, status_code=status.HTTP_201_CREATED)
@@ -18,7 +23,7 @@ def create_application(
     *, 
     db: Session = Depends(get_db), 
     application_in: schemas.ApplicationCreate, 
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Create a new application record for the current user.
     
@@ -66,7 +71,7 @@ def read_applications(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Retrieve applications for the current user."""
     applications = crud.application.get_applications_by_user(
@@ -79,7 +84,7 @@ def read_application(
     *, 
     db: Session = Depends(get_db), 
     application_id: int, 
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Get a specific application by ID, ensuring it belongs to the current user."""
     db_application = crud.application.get_application(db, application_id=application_id)
@@ -96,7 +101,7 @@ def update_application(
     db: Session = Depends(get_db), 
     application_id: int, 
     application_in: schemas.ApplicationUpdate, 
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Update a job application. Triggers auto-apply task if status changes to APPLYING and quota allows."""
     # Fetch the application ensuring it belongs to the current user
@@ -140,7 +145,7 @@ def update_application(
 async def delete_application_endpoint(
     application_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Delete a tracked job application."""
     deleted_application = crud.application.delete_application(
@@ -156,7 +161,7 @@ async def delete_application_endpoint(
 async def get_application_screenshot(
     application_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Get the final screenshot associated with a specific application."""
     db_application = crud.application.get_application(db, application_id=application_id)

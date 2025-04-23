@@ -5,14 +5,15 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from ...core.config import settings # Import settings for S3 config
+from app.core.config import settings # Absolute import
 
-from ... import crud, models, schemas
-from ...schemas.resume import ResumeParseRequest, ResumeParseResponse, BasicInfo, StructuredResume # Import new schemas correctly
-from ...db.session import get_db
-from .users import get_current_user # Dependency to get the logged-in user
-from ..services import profile_import # Import the old parsing service
-from ..services import resume_tailoring # Import the new tailoring service
+from app import crud, schemas # Import crud and schemas
+from app.models.user import User # Import User model specifically
+from app.schemas.resume import ResumeParseRequest, ResumeParseResponse, BasicInfo, StructuredResume # Absolute import
+from app.db.session import get_db # Absolute import
+from app.api.users import get_current_user # Absolute import for dependency
+from app.services import profile_import # Absolute import
+from app.services import resume_tailoring # Absolute import
 import logging # Import logging
 
 logger = logging.getLogger(__name__) # Add logger
@@ -24,7 +25,7 @@ async def upload_resume(
     *, 
     db: Session = Depends(get_db),
     file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """
     Upload a resume PDF, save it to S3, extract text,
@@ -126,7 +127,7 @@ def read_resumes(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Retrieve resumes for the current user."""
     resumes = crud.resume.get_resumes_by_owner(db, owner_id=current_user.id, skip=skip, limit=limit)
@@ -136,7 +137,7 @@ def read_resumes(
 def read_resume(
     resume_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Retrieve a specific resume by ID."""
     db_resume = crud.resume.get_resume(db, resume_id=resume_id)
@@ -151,7 +152,7 @@ def update_existing_resume(
     resume_id: int,
     resume_in: schemas.ResumeUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Update a specific resume."""
     db_resume = crud.resume.get_resume(db, resume_id=resume_id)
@@ -166,7 +167,7 @@ def update_existing_resume(
 def delete_existing_resume(
     resume_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Delete a specific resume."""
     db_resume = crud.resume.get_resume(db, resume_id=resume_id)
@@ -188,7 +189,7 @@ async def parse_and_tailor_resume(
     *, 
     db: Session = Depends(get_db),
     parse_request: schemas.ResumeParseRequest, # Use the new input schema
-    current_user: models.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """
     Receives parsed PDF text items from the frontend,

@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from ... import crud, models, schemas
-from ...db.session import get_db
-from ...api.users import get_current_user # Reuse the dependency
+from app import crud, schemas # Import crud and schemas
+from app.models.user import User # Import User model specifically
+from app.db.session import get_db # Absolute import
+from app.api.users import get_current_user # Absolute import
 
 router = APIRouter()
 
@@ -13,7 +14,7 @@ def create_job(
     *, 
     db: Session = Depends(get_db), 
     job_in: schemas.JobCreate, 
-    current_user: models.User = Depends(get_current_user) # Require auth
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Create a new job listing.
     
@@ -34,7 +35,7 @@ def read_jobs(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: models.User = Depends(get_current_user) # Require auth for now
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Retrieve a list of job listings with pagination.
     
@@ -48,7 +49,7 @@ def read_job(
     *, 
     db: Session = Depends(get_db), 
     job_id: int, 
-    current_user: models.User = Depends(get_current_user) # Require auth
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Get a specific job listing by ID.
     
@@ -65,7 +66,7 @@ def update_job(
     db: Session = Depends(get_db), 
     job_id: int, 
     job_in: schemas.JobUpdate, 
-    current_user: models.User = Depends(get_current_user) # Require auth
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Update a job listing.
     
@@ -83,7 +84,7 @@ def delete_job(
     *, 
     db: Session = Depends(get_db), 
     job_id: int, 
-    current_user: models.User = Depends(get_current_user) # Require auth
+    current_user: User = Depends(get_current_user) # Use imported User type
 ):
     """Delete a job listing.
     

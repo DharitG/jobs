@@ -9,7 +9,7 @@ ENV PIP_NO_CACHE_DIR=off \
     PIP_DEFAULT_TIMEOUT=100
 
 # Install build dependencies (if any, e.g., gcc for some packages)
-# RUN apt-get update && apt-get install -y --no-install-recommends gcc
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

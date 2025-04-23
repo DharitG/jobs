@@ -2,11 +2,25 @@ import argparse
 import logging
 import asyncio
 from sqlalchemy.orm import Session
+import sys
+import os
+
+# Add the project root (assuming 'backend' is the root containing 'app') to the Python path
+# This allows imports like `from app.main import app` to work correctly
+# when this script is run from anywhere.
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, '..', 'backend'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+
 
 # Need to adjust imports based on actual project structure and where DB session/services are accessible
 # This assumes the script is run from the 'backend' directory or the Python path is set correctly.
 from app.db.session import SessionLocal
 from app import crud, schemas
+from app.models.job import Job # Import specific Job model
+from app.models.application import Application, ApplicationStatus # Import specific Application model and Enum
 from app.services import matching
 from app.services import autosubmit
 from app.core.config import settings # For potential settings needed by services
@@ -82,30 +96,30 @@ async def run_mvp_pipeline(db: Session, user_id: int):
     logger.info(f"Processing auto-apply for matched job IDs: {matched_job_ids}")
     application_tasks = []
     for job_id in matched_job_ids:
-        job = db.query(models.Job).filter(models.Job.id == job_id).first()
+        job = db.query(Job).filter(Job.id == job_id).first() # Use imported Job
         if not job:
             logger.warning(f"Job ID {job_id} from matches not found in DB. Skipping.")
             continue
 
         # Find existing application or create a new one
-        application = db.query(models.Application).filter(
-            models.Application.user_id == user_id,
-            models.Application.job_id == job_id
+        application = db.query(Application).filter( # Use imported Application
+            Application.user_id == user_id, # Use imported Application
+            Application.job_id == job_id # Use imported Application
         ).first()
 
         if application:
             logger.info(f"Found existing application ID: {application.id} for user {user_id} and job {job_id}")
             # Optionally: Check status before re-triggering?
-            # if application.status == models.ApplicationStatus.APPLIED:
+            # if application.status == ApplicationStatus.APPLIED: # Use imported Enum
             #     logger.info(f"Application {application.id} already applied. Skipping.")
             #     continue
-            application.status = models.ApplicationStatus.PENDING # Reset status for re-try
+            application.status = ApplicationStatus.PENDING # Reset status for re-try (Use imported Enum)
             application.notes = "Pipeline triggered again."
             application.resume_id = latest_resume.id # Ensure latest resume is linked
         else:
             logger.info(f"Creating new application record for user {user_id} and job {job_id}")
             application_create = schemas.ApplicationCreate(
-                status=models.ApplicationStatus.PENDING,
+                status=ApplicationStatus.PENDING, # Use imported Enum
                 notes="Created by MVP pipeline trigger.",
                 job_id=job_id,
                 resume_id=latest_resume.id # Link the latest resume

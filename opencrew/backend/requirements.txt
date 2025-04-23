@@ -32,3 +32,7 @@ reportlab
 deepdiff
 
 boto3 # AWS SDK for Python
+
+# Testing
+pytest
+pytest-asyncio

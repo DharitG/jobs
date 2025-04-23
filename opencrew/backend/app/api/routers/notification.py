@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body, status
 from pydantic import BaseModel
 import logging
 
-from ...services import notification_service
+from app.services import notification_service # Absolute import
 # Import dependencies if needed (e.g., for auth)
 # from ...db.session import get_db
 # from .users import get_current_user
