@@ -36,7 +36,13 @@ def _call_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7, ma
         return None
 
     try:
-        logger.debug(f"Calling LLM. System Prompt: {system_prompt[:100]}... User Prompt: {user_prompt[:100]}...")
+        # Truncate prompts for logging to avoid excessive length
+        log_sys_prompt = system_prompt[:200] + "..." if len(system_prompt) > 200 else system_prompt
+        log_user_prompt = user_prompt[:300] + "..." if len(user_prompt) > 300 else user_prompt
+        logger.info(f"Calling LLM. Model: {settings.AZURE_OPENAI_DEPLOYMENT_NAME}, Temp: {temperature}, Max Tokens: {max_tokens}")
+        logger.debug(f"LLM System Prompt (truncated): {log_sys_prompt}")
+        logger.debug(f"LLM User Prompt (truncated): {log_user_prompt}")
+
         response = azure_llm.chat.completions.create(
             model=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
             messages=[
@@ -48,20 +54,22 @@ def _call_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7, ma
         )
 
         if response.choices and response.choices[0].message and response.choices[0].message.content:
-            logger.debug("LLM call successful.")
-            return response.choices[0].message.content.strip()
+            llm_response_content = response.choices[0].message.content.strip()
+            logger.info("LLM call successful.")
+            logger.debug(f"LLM Raw Response (content): {llm_response_content[:200]}...") # Log truncated response
+            return llm_response_content
         else:
-            logger.warning("LLM response was empty or invalid.")
+            logger.warning("LLM response was empty or invalid (no choices/message/content).")
             return None
 
     except openai.APIError as e:
-        logger.error(f"Azure OpenAI API returned an API Error: {e}")
+        logger.error(f"Azure OpenAI API Error during LLM call: {e}", exc_info=True) # Add exc_info
     except openai.APIConnectionError as e:
-        logger.error(f"Failed to connect to Azure OpenAI API: {e}")
+        logger.error(f"Azure OpenAI Connection Error during LLM call: {e}", exc_info=True) # Add exc_info
     except openai.RateLimitError as e:
-        logger.error(f"Azure OpenAI API request exceeded rate limit: {e}")
+        logger.error(f"Azure OpenAI Rate Limit Error during LLM call: {e}", exc_info=True) # Add exc_info
     except Exception as e:
-        logger.error(f"An unexpected error occurred during LLM call: {e}", exc_info=True)
+        logger.error(f"Unexpected error during _call_llm: {e}", exc_info=True)
 
     return None
 
@@ -72,7 +80,7 @@ def _parse_resume_with_llm(resume_text: str) -> StructuredResume:
     """
     Uses an LLM to parse raw resume text into the StructuredResume Pydantic model.
     """
-    logger.info("Parsing resume text using LLM...")
+    logger.info(f"Attempting to parse resume text using LLM. Text length: {len(resume_text)} chars.")
 
     # Define the expected JSON structure based on Pydantic models
     # (Providing this in the prompt helps the LLM)
@@ -152,9 +160,9 @@ JSON Output:"""
     llm_response_str = _call_llm(system_prompt, user_prompt, temperature=0.2, max_tokens=max_parsing_tokens)
 
     if not llm_response_str:
-        logger.error("LLM did not return a response for parsing.")
+        logger.error("LLM did not return a valid response string for parsing.")
         # Return an empty structure or raise an error
-        return StructuredResume(basic=BasicInfo(), objective="Failed to parse resume content via LLM.")
+        return StructuredResume(basic=BasicInfo(), objective="Failed to parse resume content via LLM (empty response).")
 
     try:
         # Clean potential markdown fences if the LLM ignored the instruction
@@ -166,19 +174,19 @@ JSON Output:"""
         logger.info("Successfully parsed resume text using LLM.")
         return structured_resume
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode JSON response from LLM: {e}")
-        logger.debug(f"LLM Raw Response: {llm_response_str}")
+        logger.error(f"Failed to decode JSON response from LLM during parsing: {e}", exc_info=True)
+        logger.debug(f"LLM Raw Response causing JSON decode error: {llm_response_str[:500]}...") # Log more context
         # Return an empty structure or raise an error
         return StructuredResume(basic=BasicInfo(), objective="Failed to parse LLM JSON response.")
     except ValidationError as e:
-         logger.error(f"LLM JSON response failed Pydantic validation: {e}")
-         logger.debug(f"LLM Raw Response: {llm_response_str}")
+         logger.error(f"LLM JSON response failed Pydantic validation during parsing: {e}", exc_info=True)
+         logger.debug(f"LLM Raw Response causing validation error: {llm_response_str[:500]}...") # Log more context
          # Return an empty structure or raise an error
          return StructuredResume(basic=BasicInfo(), objective="LLM response failed validation.")
     except Exception as e:
-        logger.error(f"An unexpected error occurred during LLM response processing: {e}", exc_info=True)
-        logger.debug(f"LLM Raw Response: {llm_response_str}")
-        return StructuredResume(basic=BasicInfo(), objective="Unexpected error processing LLM response.")
+        logger.error(f"An unexpected error occurred during LLM response processing in _parse_resume_with_llm: {e}", exc_info=True)
+        logger.debug(f"LLM Raw Response causing unexpected error: {llm_response_str[:500]}...") # Log more context
+        return StructuredResume(basic=BasicInfo(), objective="Unexpected error processing LLM parse response.")
 
 
 def tailor_content(structured_data: StructuredResume, job_description: str) -> StructuredResume:
@@ -190,7 +198,7 @@ def tailor_content(structured_data: StructuredResume, job_description: str) -> S
     """
     # TODO: Implement LLM calls for skills matching, experience/project highlight rewriting.
     # TODO: Consider using LangChain for more complex prompt management and output parsing.
-    logger.info("Tailoring objective using Azure LLM...")
+    logger.info(f"Attempting to tailor resume content. Job description length: {len(job_description)} chars.")
 
     if not azure_llm or not settings.AZURE_OPENAI_DEPLOYMENT_NAME:
         logger.warning("Azure LLM client or deployment name not configured. Skipping tailoring.")
@@ -214,16 +222,18 @@ Target Job Description:
 
 Rewritten Objective/Summary (Return ONLY the rewritten text):"""
 
+        logger.info("Attempting to tailor Objective/Summary...")
         tailored_objective = _call_llm(obj_system_prompt, obj_user_prompt, max_tokens=150)
         if tailored_objective:
             structured_data.objective = tailored_objective
-            logger.info("Successfully tailored objective.")
+            logger.info("Successfully generated tailored objective.")
+            logger.debug(f"Tailored objective: {tailored_objective[:200]}...")
         else:
-            logger.warning("Failed to tailor objective or LLM response was empty.")
+            logger.warning("Failed to tailor objective (LLM response was empty/failed).")
 
 
         # --- Tailor Skills ---
-        logger.info("Tailoring skills using Azure LLM...")
+        logger.info("Attempting to tailor Skills...")
         if structured_data.skills:
             # Correctly extract all skill strings from the list of SkillItem objects
             all_skill_strings = []
@@ -252,21 +262,23 @@ Most Relevant Skills (Return ONLY a comma-separated list):"""
                 relevant_skill_names = [s.strip() for s in tailored_skills_str.split(',') if s.strip()]
                 # Replace original skills with a single SkillItem containing the relevant skills
                 if relevant_skill_names:
-                    structured_data.skills = [SkillItem(category="Relevant Skills", skills=relevant_skill_names)]
+                    structured_data.skills = [SkillItem(category="Relevant Skills (Tailored)", skills=relevant_skill_names)]
                     logger.info(f"Successfully tailored skills. Identified {len(relevant_skill_names)} relevant skills.")
+                    logger.debug(f"Tailored skills list: {relevant_skill_names}")
                 else:
                     structured_data.skills = [] # Clear skills if LLM returns empty relevant list
-                    logger.info("No relevant skills identified by LLM after tailoring.")
+                    logger.info("No relevant skills identified by LLM after tailoring (LLM returned empty list).")
             else:
-                logger.warning("Failed to tailor skills or LLM response was empty. Keeping original skills.")
+                logger.warning("Failed to tailor skills (LLM response was empty/failed). Keeping original skills.")
                 # Optionally clear skills or keep original: structured_data.skills = []
         else:
-            logger.info("No skills found in structured data to tailor.")
+            logger.info("No original skills found in structured data to tailor.")
 
 
         # --- Tailor Experiences ---
-        logger.info("Tailoring experience descriptions using Azure LLM...")
+        logger.info("Attempting to tailor Experience descriptions...")
         if structured_data.experiences:
+            logger.info(f"Found {len(structured_data.experiences)} experience items to potentially tailor.")
             updated_experiences = []
             for i, exp in enumerate(structured_data.experiences):
                 # Ensure the attribute is 'position' for logging
@@ -299,33 +311,40 @@ Rewritten Bullet Points (Return ONLY the rewritten bullet points, separated by n
 
                 if tailored_desc:
                     # Split the LLM response back into a list and assign to highlights
-                    exp.highlights = [line.strip() for line in tailored_desc.split('\n') if line.strip()]
-                    logger.info(f"Successfully tailored highlights for experience item {i+1}.")
+                    tailored_highlights_list = [line.strip() for line in tailored_desc.split('\n') if line.strip()]
+                    exp.highlights = tailored_highlights_list
+                    logger.info(f"Successfully generated tailored highlights for experience item {i+1}.")
+                    logger.debug(f"Tailored highlights for exp {i+1}: {tailored_highlights_list}")
                 else:
-                    logger.warning(f"Failed to tailor highlights for experience item {i+1} or LLM response was empty. Keeping original highlights.")
+                    logger.warning(f"Failed to tailor highlights for experience item {i+1} (LLM response was empty/failed). Keeping original highlights.")
                 updated_experiences.append(exp) # Add the (potentially updated) experience back
 
             structured_data.experiences = updated_experiences # Replace with the list containing updated items
         else:
-             logger.info("No experience entries found in structured data to tailor.")
+              logger.info("No experience entries found in structured data to tailor.")
 
-    # Keep the generic error handling for the overall tailoring process
+    # Catch exceptions specifically from the tailoring process (excluding LLM call errors handled in _call_llm)
     except Exception as e:
-        logger.error(f"An unexpected error occurred during LLM tailoring process: {e}", exc_info=True)
-
-    # No need for specific openai errors here anymore as _call_llm handles them
-    # except openai.APIError as e:
-    #     logger.error(f"Azure OpenAI API returned an API Error: {e}")
-    # except openai.APIConnectionError as e:
-        logger.error(f"Failed to connect to Azure OpenAI API: {e}")
-    except openai.RateLimitError as e:
-        logger.error(f"Azure OpenAI API request exceeded rate limit: {e}")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred during LLM tailoring: {e}", exc_info=True)
+        logger.error(f"An unexpected error occurred during the 'tailor_content' function execution: {e}", exc_info=True)
 
 
-    logger.info("Content tailoring attempt complete.")
+    logger.info("Content tailoring attempt finished.")
     return structured_data
+
+# --- Preprocessing Helper ---
+
+def _preprocess_text_items(text_items: List[PdfTextItem]) -> List[PdfTextItem]:
+    """Sorts text items based on Y then X coordinates for better reading order."""
+    # Sort primarily by Y (top-to-bottom), then by X (left-to-right) for items on the same line
+    # A small tolerance might be needed for near-horizontal items, but basic sort is a good start.
+    try:
+        sorted_items = sorted(text_items, key=lambda item: (item.y, item.x))
+        logger.debug(f"Sorted {len(text_items)} text items by coordinates.")
+        return sorted_items
+    except AttributeError as e:
+        logger.warning(f"Could not sort text items due to missing attribute: {e}. Returning original order.")
+        # Return original list if sorting fails (e.g., items don't have x/y)
+        return text_items
 
 # --- Main Service Function ---
 
@@ -338,20 +357,22 @@ def process_and_tailor_resume(
     """
     logger.info("Starting resume processing and tailoring...")
 
-    # 1. Concatenate text from PdfTextItems
+    # 1. Preprocess text items (e.g., sort by coordinates)
+    sorted_text_items = _preprocess_text_items(text_items)
+
+    # 2. Concatenate text from preprocessed PdfTextItems
     # Simple concatenation, preserving some spacing. Might need refinement.
-    # Ensure items are roughly sorted by y then x coordinate if not already done by caller.
-    # text_items.sort(key=lambda item: (item.y, item.x)) # Assuming y, x are available
-    raw_resume_text = "\n".join(item.text for item in text_items) # Use 'text' field from PdfTextItem
+    raw_resume_text = "\n".join(item.text for item in sorted_text_items) # Use 'text' field from PdfTextItem
 
     if not raw_resume_text.strip():
-        logger.warning("No text content found in provided text items.")
+        logger.error("No text content found after preprocessing and joining text items. Cannot proceed.")
         return StructuredResume(basic=BasicInfo(), objective="No text content found in resume.")
 
-    # 2. Parse raw text into structured data using LLM
+    # 3. Parse raw text into structured data using LLM
+    logger.info("Calling LLM for initial parsing...")
     structured_data = _parse_resume_with_llm(raw_resume_text)
 
-    # 3. Tailor content using LLM (if job description is provided and parsing was successful)
+    # 4. Tailor content using LLM (if job description is provided and parsing was successful)
     # Check if parsing actually succeeded by ensuring objective doesn't start with failure messages
     parsing_succeeded = True
     if not structured_data or not structured_data.objective:
@@ -372,11 +393,13 @@ def process_and_tailor_resume(
             logger.warning(f"Skipping tailoring because initial parsing failed with message: {structured_data.objective}")
 
     if job_description and parsing_succeeded:
+        logger.info("Job description provided and parsing succeeded. Proceeding with content tailoring...")
         structured_data = tailor_content(structured_data, job_description)
     elif not job_description:
-        logger.info("No job description provided, skipping LLM tailoring.")
-    # The 'elif parsing_failed' case is covered by the updated parsing_succeeded logic
+        logger.info("No job description provided. Skipping content tailoring.")
+    else: # Parsing failed
+        logger.warning("Initial parsing failed. Skipping content tailoring.")
 
 
-    logger.info("Resume processing and tailoring finished.")
+    logger.info("Resume processing and tailoring workflow finished.")
     return structured_data

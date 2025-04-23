@@ -1,4 +1,4 @@
-# JobBright TODO List
+# JobBright Core Pipeline TODO List (Focus: Resume -> Match -> Tailor -> Apply)
 
 **Legend:**
 *   ⬜ = Not Started
@@ -7,107 +7,70 @@
 
 ---
 
-## 1. Core Focus: Auto-Apply & Supporting Systems
+## 1. Resume Intake & Processing
 
-This section covers the primary development focus, including the auto-apply mechanism and the systems it directly relies upon (scraping, matching, resume optimization, core UI).
+*   🚧 **Frontend Parsing (`usePdfParser.ts`):** Verify PDF parsing extracts necessary text items reliably.
+*   ✅ **Backend Preprocessing (`resume_tailoring.py`):** Implemented basic `_preprocess_text_items` to sort text items by coordinates (Y, X) before joining.
+*   ✅ **API Endpoint (`/api/v1/resumes/parse-and-tailor`):** API route implemented in `api/resumes.py` to receive data, call `resume_tailoring.py`, and save `structured_data`.
+*   ✅ **LLM Parsing (`resume_tailoring.py`):** Basic LLM call implemented to parse raw text to `StructuredResume`.
+*   🚧 **LLM Parsing Quality & Tuning:** Test and tune the LLM parsing prompt (`_parse_resume_with_llm`) for accuracy and robustness across different resume formats.
+*   ✅ **LLM Tailoring (`resume_tailoring.py`):** Basic LLM calls implemented to tailor objective, skills, experience based on job description (`tailor_content`).
+*   🚧 **LLM Tailoring Quality & Tuning:** Test and tune the LLM tailoring prompts for relevance and quality. Ensure it handles cases where structured data fields are missing. Needs integration testing with job descriptions.
+*   ✅ **DB Storage:** `structured_data` JSONB column added and basic CRUD operations exist.
+*   ✅ **Error Handling & Logging (`resume_tailoring.py`):** Added more detailed logging throughout parsing and tailoring functions (including truncated prompts/responses). Error handling relies on try/except blocks and returning specific failure messages in the objective.
+*   ✅ **Frontend Integration (`ProfileImport.tsx`):** Frontend component implements calls to `/upload` and `/parse-and-tailor` APIs and handles basic state. Needs verification (part of #12).
 
-### Auto-Apply Service (`services/autosubmit.py`)
-*   ✅ **Site Interaction Logic:** Handled by `browser_use.Agent` based on task prompt. Requires prompt refinement for specific quirks.
-*   ✅ **CAPTCHA Strategy:** Handled by `browser_use.Agent` / underlying service. Requires monitoring agent's success rate.
-*   ⬜ **(Obsolete) CAPTCHA Strategy (Tier 3 - AI-solve):** Implement OCR/simple math solving for basic CAPTCHAs. Requires additional libraries/setup.
-*   ⬜ **(Obsolete) CAPTCHA Strategy (Tier 4 - Human-loop):** Implement escalation to a human review queue. Requires external service/tooling.
-*   🚧 **Error Telemetry & Artifacts:** Fully integrate error reporting (e.g., Sentry) and artifact storage (e.g., S3). Currently placeholders. *(Update: Basic local saving of HTML/Screenshot on failure added to autosubmit.py)*
-*   ⬜ **Self-Healing & Testing:** Implement nightly synthetic runs, golden-path tests in CI. Requires CI setup.
-*   🚧 **Pro/Elite Tier Logic:** Refine unlimited quota logic (Pro) and implement actual throttling heuristics (Elite). Currently placeholders. *(Note: Quota check seems okay for Pro/Elite 'unlimited', throttling is just a sleep)*.
-*   ✅ **Site Adapters:** Replaced by `browser_use.Agent`. Prompt engineering handles site-specific instructions.
-*   ⬜ **Full Human Emulation:** Implement robust fingerprinting, header rotation, proxy management.
-*   ⬜ **Advanced Submission Verification:** Explore network hooks or email watching for more reliable success confirmation.
+## 2. Job Scraping & Matching
 
-### Job Scraping (`services/scraping.py`, `crawler/job_crawler.py`)
-*   ✅ **Scraping Implementation:** Fully implement and test Indeed (Playwright), Greenhouse (API), and Lever (API) adapters. (Greenhouse/Lever API modes implemented via `sites.yml` config)
-*   ⬜ **Scraping Robustness:** Implement ToS checks/fallbacks, improve error handling, and establish a maintenance strategy for changing website structures.
-*   ⬜ **Scheduling:** Implement job scheduling for the crawler (e.g., using Celery Beat).
+*   ✅ **Scraping Implementation:** Basic scrapers for Greenhouse/Lever (API) and potentially Indeed (Playwright via `sites.yml`) exist.
+*   ✅ **Scraping Robustness & Scheduling:** Individual scrapers and `run_scrapers` in `scraping.py` include basic try/except error handling. Scheduling is configured via Celery Beat in `celery_app.py` (runs `run_all_scrapers_task` every 6 hours).
+*   ✅ **Job Embedding:** Jobs seem to be getting embeddings generated (`crud/job.py`).
+*   ✅ **Qdrant Indexing:** Logic exists to index jobs with embeddings (`matching.py`, `tasks.py`).
+*   🚧 **Qdrant Setup:** Ensure Qdrant instance is running and accessible (`infra/docker-compose.yml` or cloud).
+*   🚧 **Matching Effectiveness (`matching.py`):** Refactored `search_similar_jobs` to return full `Job` objects instead of just IDs. Further evaluation/tuning of embeddings or search parameters may be needed. Ensure it correctly uses resume embeddings against job embeddings.
 
-### Job Matching (`services/matching.py`)
-*   🚧 **Matching Effectiveness:** Evaluate and potentially improve semantic matching quality (e.g., different embedding models, fine-tuning, better text extraction from source).
+## 3. Application Triggering & Quota Management
 
-### Resume Optimization (`services/resume_optimizer.py`, `api/optimize.py`, NEW: `services/resume_tailoring.py`)
-*   > **Strategy Shift (Option B):** Moving away from DOCX conversion/patching (`resume_optimizer.py`) towards frontend PDF parsing (`readPdf.ts`) + backend tailoring/ATS template generation (`resume_tailoring.py`). Old tasks below are likely deprecated unless reused conceptually.
-*   ⬜ **(Deprecated) Parsing Robustness:** Improve DOCX parsing logic (`is_likely_heading`, `get_paragraph_type`, handle tables/columns) for better accuracy. Address `unoconv` dependency/alternatives.
-*   ⬜ **(Deprecated) Patching Formatting Preservation:** Enhance `apply_patches_to_docx` to perform run-level edits to better preserve inline formatting.
-*   🚧 **Keyword Analysis Quality:** Consider using semantic embeddings instead of/alongside TF-IDF. Refine term relevance scoring. *(Relevant for new strategy)*
-*   🚧 **AI Rewrite Quality:** Test and tune the OpenAI prompt in `generate_rewrite_suggestion` for better results. *(Relevant for new strategy)*
-*   ✅ **Database Integration:** Define and implement storage for the *structured* resume data generated by the new tailoring service. (Added `structured_data` JSONB column, migration, updated CRUD/API).
-*   ✅ **Configuration:** Move hardcoded values (temp paths, API keys, model names) to `core/config.py`.
-*   🚧 **Error Handling & Logging:** Add more robust error handling and detailed logging throughout the *new* tailoring service and API.
-*   🚧 **Frontend Integration:** Develop UI components to interact with the *new* `/parse-and-tailor` API endpoint. (Initial upload/parse/tailor trigger implemented in ProfileImport.tsx)
-*   --- **New Strategy Tasks** ---
-*   ⬜ **Implement `resume_tailoring.py`: Preprocessing:** Implement `preprocess_text_items` to group/sort `TextItems` from frontend.
-*   ✅ **Implement `resume_tailoring.py`: Section Identification:** Implement `identify_sections` using heuristics. (Refined heading detection, keyword matching, and contact info logic).
-*   ✅ **Implement `resume_tailoring.py`: Data Extraction:** Implement `extract_structured_data` to populate `StructuredResume`. (Basic rule-based extraction for Exp/Edu added)
-*   ✅ **Implement `resume_tailoring.py`: LLM Tailoring:** Implement `tailor_content` using Azure OpenAI calls for objective, skills, experience highlights. (Needs integration testing)
-*   ⬜ **Connect API:** Ensure `/api/v1/resumes/parse-and-tailor` correctly calls the implemented service and handles DB saving.
+*   ✅ **Matching-to-Application Logic:** Implemented Celery task `process_user_job_matches` (`tasks.py`) that:
+    *   Takes `user_id`, `resume_id`. Fetches resume embedding. Calls `matching.search_similar_jobs`.
+    *   Checks for existing applications (`crud.application.get_application_by_details`).
+    *   Checks user's auto-apply quota (`autosubmit.check_user_quota`).
+    *   Creates `Application` records (`crud.application.create_application`).
+    *   Triggers `tasks.trigger_auto_apply` via `.delay()` for each new application.
+*   ✅ **Quota Check (Safeguard in apply_to_job_async):** `autosubmit.apply_to_job_async` contains a safeguard check.
+*   ✅ **Quota Logic Refinement:** Verified `check_user_quota` in `autosubmit.py` correctly reflects tier limits (Free: 50/month count, Pro/Elite: returns 99999).
 
-### Core Frontend (Dashboard & Related)
-*   🚧 **Application Pipeline Dashboard (`app/dashboard/page.tsx`, `components/PipelineBoard.tsx`):** Polish UI, ensure reliable data fetching/updates from backend (tRPC `application.list` & `updateStatus`), handle edge cases and loading/error states.
-*   🚧 **Limited GPT Resume Edits UI (`components/ResumeEditModal.tsx`):** Connect UI to *new* backend `/parse-and-tailor` API endpoint and handle `StructuredResume` data. Resolve any TS path alias issues.
+## 4. Tailored PDF Generation
 
----
+*   ✅ **PDF Generator Service (`pdf_generator.py`):** Service created to generate PDF from `StructuredResume` using `reportlab`.
+*   ✅ **Schema Mapping & Verification:** Verified `StructuredResumePdfGenerator` correctly maps fields from the `StructuredResume` Pydantic model to ReportLab logic. (Some schema fields like `website`, `keywords`, `education.highlights` are defined but not currently rendered).
+*   ✅ **Styling & ATS Friendliness:** Styles in `resume_pdf_styles.py` use standard fonts (Calibri) and clear sectioning, generally ATS-friendly. Potential minor risks: uses a two-column table for layout (single-column flow is safer) and has very narrow margins (0.1 inch).
 
-## 2. Near-Term Features (Partially Implemented)
+## 5. Auto-Application Execution (`browser-use` Agent)
 
-Features with some backend structure or UI components already started.
+*   ✅ **Integration:** `autosubmit.py` now generates/selects the correct PDF (original or tailored) and includes its path in the agent prompt.
+*   ✅ **Agent Prompt Refinement:** Reviewed `task_prompt` in `autosubmit.py`. It includes clear instructions for navigation, filling profile info, using the correct resume path, handling standard/EEOC questions, and skipping complex ones. Further refinement will depend on real-world testing.
+*   ✅ **Agent Success Monitoring:** `autosubmit.py` inspects `AgentHistoryList` (`is_done()`, `has_errors()`, `final_result()`, `errors()`), logs outcomes, and updates `Application` status/notes accordingly. This provides data for monitoring (e.g., via DB queries or log analysis).
+*   ✅ **Basic Artifacts (Screenshot):** Screenshot URL from the agent run is saved to the `Application` record via S3 upload logic.
+*   ✅ **Error Telemetry:** Added `sentry-sdk` to requirements, added `SENTRY_DSN` to config, initialized SDK in `celery_app.py`, and added `sentry_sdk.capture_exception()` calls in `autosubmit.py` error handling.
 
-*   🚧 **Daily Streak Gamification (`components/DailyStreak.tsx`):** Implement backend logic and connect frontend component via tRPC.
-*   🚧 **VisaPulse (`services/visa_alerts.py`, `components/VisaPulse.tsx`):** Implement actual visa alert logic in the backend service. Ensure frontend correctly displays data and handles interactions (e.g., lawyer chat button).
-*   🚧 **GPT-4o Resume/Cover Letter Rewriting:** Implement backend service logic and connect `ResumeEditModal.tsx` or new components.
-*   🚧 **Interview Flash-Cards (`components/InterviewFlashCard.tsx`):** Implement backend LLM Q&A generation and connect frontend component via tRPC.
-*   🚧 **Priority Support Chat Bot (`components/SupportChatTrigger.tsx`):** Integrate with a third-party chat/support service.
-*   🚧 **VisaPulse In-app Lawyer Chat (`components/VisaPulse.tsx`):** Implement backend logic/integration for connecting users (if planned).
-*   🚧 **Mock Interview Scheduling (`components/MockInterviewScheduler.tsx`):** Implement backend scheduling logic and connect frontend component via tRPC.
-*   🚧 **Slack Alerts (`components/SlackAlertSettings.tsx`):** Implement backend integration for sending Slack notifications and connect frontend component via tRPC. *(Update: Basic backend service and test API endpoint /notifications/send-test-slack created)*.
-*   🚧 **Stripe Integration (`api/subs.py`, `pages/pricing.tsx`, tRPC `subscription` router):** Fully implement subscription creation, status checking, webhook handling. Connect frontend checkout flow and annual billing toggle. Implement paywall/upgrade prompts based on subscription status. *(Update: Backend API /create-checkout-session implemented. Webhook handlers for checkout.session.completed, customer.subscription.updated, customer.subscription.deleted implemented with DB updates. Needs: Price ID->Tier mapping config, Alembic migration, Testing, Frontend integration)*.
-*   🚧 **Personal Success Coach (`components/SuccessCoachSection.tsx`):** Implement backend logic for assigning/managing coaches and connect frontend component via tRPC.
-*   🚧 **Guaranteed Résumé Review (`components/ResumeReviewSubmit.tsx`):** Implement backend workflow for managing submissions/feedback and connect frontend component via tRPC.
-*   🚧 **Referral Credits System (`components/ReferralSection.tsx`):** Implement backend logic for tracking referrals/credits and connect frontend component via tRPC.
-*   🚧 **Mini-milestones/Confetti/Badges (`components/MilestoneBadge.tsx`):** Implement backend triggers and connect frontend component via tRPC.
-*   🚧 **Affiliate Rev-share Tracking (`components/AffiliateDashboard.tsx`):** Implement backend logic and connect frontend component via tRPC.
+## 6. Core Infrastructure (Pipeline Minimum)
 
----
+*   ✅ **Database Setup:** PostgreSQL service (`db`) defined in `docker-compose.yml`. Backend/worker configured to connect. Schema application handled by backend entrypoint (`alembic upgrade head`).
+*   ✅ **Vector DB Setup:** Qdrant service (`qdrant`) defined in `docker-compose.yml`. Backend/worker configured to connect.
+*   ✅ **AWS S3 Setup:** Settings (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION_NAME`, `S3_BUCKET_NAME`) are defined in `config.py` to load from environment. Code in `api/resumes.py` and `services/autosubmit.py` uses these settings. Actual credentials must be provided in the environment.
+*   ✅ **Celery Setup:** Redis service (`redis`) defined in `docker-compose.yml` as broker/backend. Celery worker service (`worker`) defined. Backend/worker configured to connect.
+*   ✅ **Configuration (`core/config.py`):** Ensure all necessary settings (DB URLs, API keys, S3 creds, Qdrant info, Azure OpenAI creds) are loaded correctly.
 
-## 3. Foundational Backend & Infrastructure
+## 7. Testing (Core Pipeline Focus)
 
-Core underlying systems, operational tasks, and compliance.
-
-*   ⬜ **RBAC:** Implement Role-Based Access Control using Auth0 roles/permissions, protecting relevant API endpoints.
-*   🚧 **Configuration Management:** Ensure all secrets and environment-specific settings are loaded via `core/config.py` and not hardcoded. *(Partially verified)*.
-    *   ⬜ **AWS Credentials:** Configure AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) securely in the backend environment (e.g., via .env or secrets manager).
-*   🚧 **Infrastructure (`infra/docker-compose.yml`):** Refine Docker Compose for robustness, potentially add health checks for Qdrant. *(Update: Pinned Qdrant, removed dev volumes/reload)*.
-*   ⬜ **Deployment Pipeline:** Configure CI/CD (e.g., GitHub Actions to Render/AWS).
-*   ⬜ **Managed Services:** Setup and configure managed Postgres/Redis/Qdrant for production.
-    *   ⬜ **AWS S3 Setup:** Create S3 bucket for storing application screenshots/artifacts. Configure appropriate permissions (e.g., public read access or CloudFront distribution).
-*   ⬜ **Observability:** Setup Prometheus + Grafana (or Render Metrics), Logging Aggregation, Sentry Error Tracking.
-*   ⬜ **Audit Logging:** Implement basic audit logging for critical actions.
-*   ⬜ **Compliance:** Implement GDPR/CCPA Data Deletion endpoint/logic. Verify PII encryption at rest. Implement Scraper ToS Checks/API fallback.
-*   ⬜ **Security Hardening:** Review dependencies, secrets management, implement rate limiting, configure firewalls. Conduct security audit before launch.
+*   ✅ **Unit/Integration Tests:** Basic tests added for:
+    *   `resume_tailoring.py` (✅ Added tests for preprocessing, parsing failures, tailoring failures).
+    *   `pdf_generator.py` (✅ Added basic tests for file creation).
+    *   `matching.py` (✅ Added basic unit tests with mocks).
+    *   `autosubmit.py` (✅ Added basic unit tests for quota check and initial error handling).
+    *   Quota checking logic before task queuing (✅ Added basic tests in `test_tasks.py`).
+*   ⬜ **End-to-End Tests:** Create E2E tests covering the main flow: Resume Upload -> Tailoring -> Matching -> Application Trigger -> Auto-Submit Attempt (mocking the browser agent's final result).
 
 ---
-
-
----
-
-## 4. CI/CD & Near-Term Implementation Tasks
-
-Tasks related to setting up deployment pipelines and implementing core logic identified on 2025-04-21.
-
-*   ✅ **Backend CI Workflow:** Create GitHub Actions workflow (`.github/workflows/backend_ci.yml`) for linting (flake8, black) and testing (pytest) on pull requests.
-*   ✅ **Implement LLM Resume Tailoring:** Implement the actual LLM call logic in `services/resume_tailoring.py` (`tailor_content` function) using the configured Azure OpenAI client. (Basic objective tailoring implemented)
-*   ✅ **Frontend CI Workflow:** Create GitHub Actions workflow (`.github/workflows/frontend_ci.yml`) for linting and testing the frontend code (`opencrew/frontend`) on pull requests.
-*   ✅ **Refine Backend Dockerfile:** Optimize `opencrew/backend/Dockerfile` for production deployment (e.g., multi-stage build, smaller image, non-root user) suitable for Railway.
-
-## 4. Testing
-
-*   🚧 **Backend Unit/Integration Tests:** Write comprehensive Pytest tests... (✅ Initial tests for resume_tailoring service added, manual verification needed due to runner issues).
-*   🚧 **Frontend Unit Tests (`vitest`):** Complete unit tests for remaining components and hooks. Ensure adequate coverage.
-*   ⬜ **End-to-End Tests:** Write E2E tests (e.g., Cypress, Playwright) for critical user flows (signup, login, applying, optimizing resume, upgrading subscription).
-
+*Removed sections related to non-core features (Gamification, VisaPulse, Slack, etc.), deprecated items, advanced infrastructure (Observability, Compliance, RBAC beyond basic needs), and manual tasks.*

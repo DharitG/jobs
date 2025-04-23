@@ -155,3 +155,90 @@ def test_process_and_tailor_empty_input():
 # explicit separate tests for each tailoring step failing, unless we want to verify
 # that specific behaviour (e.g., objective stays original if tailoring fails).
 # The test_process_and_tailor_success_with_tailoring already covers the success path.
+@patch('app.services.resume_tailoring._call_llm')
+def test_preprocess_text_items_sorting(mock_call_llm: MagicMock):
+    """Test that text items are sorted by coordinates before parsing."""
+    unsorted_text_items = [
+        PdfTextItem(text="Line 2, Item 1", fontName="Arial", width=100, height=10, x=10, y=20, hasEOL=True),
+        PdfTextItem(text="Line 1, Item 1", fontName="Arial", width=100, height=10, x=10, y=10, hasEOL=True),
+        PdfTextItem(text="Line 2, Item 2", fontName="Arial", width=100, height=10, x=120, y=20, hasEOL=True),
+        PdfTextItem(text="Line 1, Item 2", fontName="Arial", width=100, height=10, x=120, y=10, hasEOL=True),
+    ]
+    expected_joined_text = "Line 1, Item 1\nLine 1, Item 2\nLine 2, Item 1\nLine 2, Item 2"
+
+    # Mock the LLM call to just return a minimal valid structure based on the expected text
+    mock_call_llm.return_value = json.dumps({"basic": {"name": "Sorted Test"}})
+
+    process_and_tailor_resume(text_items=unsorted_text_items, job_description=None)
+
+    # Check that _call_llm was called once (only for parsing)
+    assert mock_call_llm.call_count == 1
+    # Check the user prompt passed to the LLM contains the correctly sorted and joined text
+    call_args, call_kwargs = mock_call_llm.call_args
+    system_prompt, user_prompt = call_args
+    assert expected_joined_text in user_prompt
+
+
+@patch('app.services.resume_tailoring._call_llm')
+def test_process_and_tailor_objective_tailoring_fails(mock_call_llm: MagicMock):
+    """Test behavior when objective tailoring fails but others succeed."""
+    original_objective = "Original Software Engineer Objective"
+    parsed_json_with_orig_obj = json.dumps({
+        "basic": {"name": "Test User"}, "objective": original_objective, "skills": [{"category": "A", "skills": ["Python"]}], "experiences": [{"company":"Comp", "position": "Dev", "highlights": ["Did X"]}]
+    })
+    mock_call_llm.side_effect = [
+        parsed_json_with_orig_obj,    # 1. Parsing success
+        None,                         # 2. Tailor objective FAILS
+        "Python",                     # 3. Tailor skills success
+        "Did X tailored"              # 4. Tailor experience success
+    ]
+
+    result = process_and_tailor_resume(text_items=mock_text_items, job_description=mock_job_description)
+
+    assert mock_call_llm.call_count == 4
+    assert result.objective == original_objective # Objective should remain original
+    assert result.skills[0].skills == ["Python"] # Skills should be tailored
+    assert result.experiences[0].highlights == ["Did X tailored"] # Experience should be tailored
+
+@patch('app.services.resume_tailoring._call_llm')
+def test_process_and_tailor_skills_tailoring_fails(mock_call_llm: MagicMock):
+    """Test behavior when skills tailoring fails but others succeed."""
+    original_skills = [{"category": "Original Category", "skills": ["SkillA", "SkillB"]}]
+    parsed_json_with_orig_skills = json.dumps({
+        "basic": {"name": "Test User"}, "objective": "Obj", "skills": original_skills, "experiences": [{"company":"Comp", "position": "Dev", "highlights": ["Did X"]}]
+    })
+    mock_call_llm.side_effect = [
+        parsed_json_with_orig_skills,    # 1. Parsing success
+        "Tailored Obj",                # 2. Tailor objective success
+        None,                          # 3. Tailor skills FAILS
+        "Did X tailored"               # 4. Tailor experience success
+    ]
+
+    result = process_and_tailor_resume(text_items=mock_text_items, job_description=mock_job_description)
+
+    assert mock_call_llm.call_count == 4
+    assert result.objective == "Tailored Obj" # Objective should be tailored
+    assert result.skills == original_skills # Skills should remain original
+    assert result.experiences[0].highlights == ["Did X tailored"] # Experience should be tailored
+
+
+@patch('app.services.resume_tailoring._call_llm')
+def test_process_and_tailor_experience_tailoring_fails(mock_call_llm: MagicMock):
+    """Test behavior when experience tailoring fails but others succeed."""
+    original_highlights = ["Original Highlight 1"]
+    parsed_json_with_orig_exp = json.dumps({
+        "basic": {"name": "Test User"}, "objective": "Obj", "skills": [{"category": "A", "skills": ["Python"]}], "experiences": [{"company":"Comp", "position": "Dev", "highlights": original_highlights}]
+    })
+    mock_call_llm.side_effect = [
+        parsed_json_with_orig_exp,    # 1. Parsing success
+        "Tailored Obj",               # 2. Tailor objective success
+        "Python",                     # 3. Tailor skills success
+        None                          # 4. Tailor experience FAILS
+    ]
+
+    result = process_and_tailor_resume(text_items=mock_text_items, job_description=mock_job_description)
+
+    assert mock_call_llm.call_count == 4
+    assert result.objective == "Tailored Obj" # Objective should be tailored
+    assert result.skills[0].skills == ["Python"] # Skills should be tailored
+    assert result.experiences[0].highlights == original_highlights # Experience should remain original

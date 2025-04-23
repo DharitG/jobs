@@ -26,6 +26,9 @@ from ..schemas.resume import StructuredResume
 
 load_dotenv() # Load .env file for API keys
 # --- End New Imports ---
+# Sentry Import
+import sentry_sdk
+
 # Telemetry Imports (Placeholders - require installation and configuration)
 # from prometheus_client import Counter, Gauge # Example
 # from opentelemetry import trace # Example
@@ -378,6 +381,7 @@ async def apply_to_job_async(db: Session, application_id: int):
 
         except Exception as history_parse_error:
              logger.error(f"Error parsing agent history for application {application_id}: {history_parse_error}", exc_info=True)
+             sentry_sdk.capture_exception(history_parse_error) # Capture exception in Sentry
              agent_success = False
              agent_message = f"Failed to interpret agent result: {history_parse_error}"
              agent_error_details = str(history_parse_error)
@@ -386,6 +390,7 @@ async def apply_to_job_async(db: Session, application_id: int):
     except Exception as agent_exec_error:
         # Catch errors during the agent instantiation or run() call itself, or PDF generation/download
         logger.error(f"Error during auto-apply setup or execution for application {application_id}: {agent_exec_error}", exc_info=True)
+        sentry_sdk.capture_exception(agent_exec_error) # Capture exception in Sentry
         agent_success = False
         agent_message = f"Auto-apply setup or agent execution failed: {agent_exec_error}"
         agent_error_details = str(agent_exec_error)
@@ -446,6 +451,7 @@ async def apply_to_job_async(db: Session, application_id: int):
         logger.info(f"Finished auto-apply attempt for application ID: {application_id}. Agent Success: {agent_success}. Final Status: {application.status}. Final Notes: {application.notes}")
     except Exception as final_commit_e:
          logger.error(f"Failed to commit final application status update for ID {application_id}: {final_commit_e}", exc_info=True)
+         sentry_sdk.capture_exception(final_commit_e) # Capture exception in Sentry
          db.rollback()
 
 

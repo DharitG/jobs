@@ -38,3 +38,7 @@ pytest
 pytest-asyncio
 
 pytest-mock
+
+sentry-sdk
+
+python-dotenv

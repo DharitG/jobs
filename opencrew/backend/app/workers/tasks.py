@@ -95,3 +95,102 @@ def run_all_scrapers_task():
         logger.error(f"Error during run_all_scrapers_task: {e}", exc_info=True)
         # Depending on retry policy, this might raise the exception to trigger a retry
         raise
+
+
+@celery_app.task(acks_late=True, name="tasks.process_user_job_matches")
+def process_user_job_matches(user_id: int, resume_id: int):
+    """ 
+    Fetches relevant jobs for a user/resume, checks quotas, 
+    creates Application records, and triggers auto-apply tasks.
+    """
+    logger.info(f"Starting task process_user_job_matches for user_id: {user_id}, resume_id: {resume_id}")
+    db = SessionLocal()
+    try:
+        # --- 1. Get Resume Embedding --- 
+        resume = crud.resume.get_resume(db, resume_id=resume_id, owner_id=user_id)
+        if not resume:
+            logger.error(f"Resume ID {resume_id} not found for user {user_id}. Aborting task.")
+            return
+        if not resume.embedding:
+             logger.error(f"Resume ID {resume_id} has no embedding. Cannot perform matching. Aborting task.")
+             return
+        resume_embedding = resume.embedding # Assuming embedding is stored correctly
+
+        # --- 2. Find Matched Jobs ---
+        logger.info(f"Searching for similar jobs for resume {resume_id} (user {user_id})...")
+        # Pass the db session and user_id to the updated search function
+        matched_jobs: List[Job] = matching.search_similar_jobs(db=db, resume_embedding=resume_embedding, user_id=user_id)
+        if not matched_jobs:
+            logger.info(f"No job matches found via Qdrant/DB for user {user_id}, resume {resume_id}.")
+            return
+        logger.info(f"Found {len(matched_jobs)} potential job matches.")
+
+        # --- 3. Process Matches (Quota Check, Create Application, Trigger Task) ---
+        created_count = 0
+        quota_exceeded_count = 0
+        already_applied_count = 0
+        trigger_failed_count = 0
+
+        for job in matched_jobs:
+            # --- 3a. Check if application already exists ---
+            existing_application = crud.application.get_application_by_details(
+                db, user_id=user_id, resume_id=resume_id, job_id=job.id
+            )
+            if existing_application:
+                logger.debug(f"Application already exists for user {user_id}, resume {resume_id}, job {job.id}. Skipping.")
+                already_applied_count += 1
+                continue
+
+            # --- 3b. Check user quota ---
+            has_quota, quota_message = autosubmit.check_user_quota(db, user_id=user_id)
+            if not has_quota:
+                logger.info(f"Quota exceeded for user {user_id}. Skipping job {job.id}. Reason: {quota_message}")
+                quota_exceeded_count += 1
+                # Optimization: If quota is exceeded, we can stop processing further matches for this user in this run.
+                # However, keep processing all matches for now for simpler logic and logging consistency.
+                continue
+                # break # Uncomment this line to stop processing if quota is exceeded
+
+            # --- 3c. Create Application Record ---
+            logger.info(f"Quota available for user {user_id}. Creating application for job {job.id} ({job.title}).")
+            try:
+                app_create = schemas.ApplicationCreate(
+                    resume_id=resume_id,
+                    job_id=job.id,
+                    status="PENDING_TRIGGER", # Initial status before task pickup
+                    notes="Application created via automated matching task."
+                )
+                new_application = crud.application.create_application(db=db, application=app_create, user_id=user_id)
+                logger.info(f"Created Application record ID: {new_application.id}")
+
+                # --- 3d. Trigger Auto-Apply Task ---
+                try:
+                    trigger_auto_apply.delay(application_id=new_application.id)
+                    logger.info(f"Successfully triggered auto-apply task for application ID: {new_application.id}")
+                    created_count += 1
+                    # Update status after successful trigger? Optional.
+                    # crud.application.update_application_status(db, app_id=new_application.id, status="PENDING_EXECUTION")
+                except Exception as trigger_exc:
+                    logger.error(f"Failed to trigger auto-apply task for application ID {new_application.id}: {trigger_exc}", exc_info=True)
+                    # Optionally update status to reflect trigger failure
+                    crud.application.update_application_status(db, app_id=new_application.id, status="TRIGGER_FAILED")
+                    trigger_failed_count += 1
+                    # Should we rollback the application creation if the trigger fails? Depends on desired behavior.
+                    # For now, keep the record with TRIGGER_FAILED status.
+
+            except Exception as app_create_exc:
+                logger.error(f"Failed to create Application record for user {user_id}, job {job.id}: {app_create_exc}", exc_info=True)
+                db.rollback() # Rollback this specific application creation attempt
+
+        
+        logger.info(f"Finished processing matches for user {user_id}, resume {resume_id}. "
+                    f"Created/Triggered: {created_count}, Quota Exceeded: {quota_exceeded_count}, Already Existed: {already_applied_count}, Trigger Failed: {trigger_failed_count}")
+
+    except Exception as e:
+        logger.error(f"Error during process_user_job_matches for user {user_id}, resume {resume_id}: {e}", exc_info=True)
+        db.rollback() # Rollback in case of error during the process
+        # Consider raising the exception if retries are desired
+        # raise e 
+    finally:
+        db.close()
+

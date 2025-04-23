@@ -1,12 +1,13 @@
 from sentence_transformers import SentenceTransformer
 import qdrant_client
 import numpy as np
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional # Add Optional
 import logging # Added
 from qdrant_client.http.models import Distance, VectorParams, PointStruct, UpdateStatus # Added
+from sqlalchemy.orm import Session # Add Session import
 
 from ..core.config import settings
-from .. import schemas # Import schemas only
+from .. import schemas, crud # Import schemas and crud
 from ..models.job import Job # Import Job model directly
 
 # Setup logger
@@ -106,8 +107,10 @@ def index_job(job: Job, job_embedding: List[float]): # Use direct import
         logger.error(f"Error indexing job ID {job.id} in Qdrant: {e}")
         return False
 
-def search_similar_jobs(resume_embedding: List[float], limit: int = 10) -> List[Tuple[int, float]]:
-    """Searches Qdrant for jobs similar to the given resume embedding."""
+# Added user_id parameter for potential future filtering based on user history (e.g., already applied)
+# Changed return type from List[Tuple[int, float]] to List[Job]
+def search_similar_jobs(db: Session, resume_embedding: List[float], user_id: int, limit: int = 10) -> List[Job]:
+    """Searches Qdrant for jobs similar to the given resume embedding and returns Job objects."""
     if not qdrant_db:
         logger.error("Qdrant client not available. Cannot search for jobs.")
         return []
@@ -124,9 +127,23 @@ def search_similar_jobs(resume_embedding: List[float], limit: int = 10) -> List[
             # query_filter=models.Filter(...)
         )
         # Results are ScoredPoint objects: id, version, score, payload, vector
-        ranked_jobs = [(hit.id, hit.score) for hit in search_result]
-        logger.info(f"Found {len(ranked_jobs)} similar jobs in Qdrant.")
-        return ranked_jobs
+        matched_job_ids = [hit.id for hit in search_result]
+        scores = {hit.id: hit.score for hit in search_result} # Store scores if needed later
+
+        logger.info(f"Qdrant search returned {len(matched_job_ids)} potential matches for user {user_id}.")
+
+        if not matched_job_ids:
+            return []
+
+        # Fetch the corresponding Job objects from the database
+        # Note: This might fetch jobs the user has already applied to. Filtering happens in the calling task.
+        matched_jobs_from_db = crud.job.get_jobs_by_ids(db, job_ids=matched_job_ids)
+
+        # Optional: Sort the returned jobs based on Qdrant score (requires fetching scores)
+        # matched_jobs_from_db.sort(key=lambda job: scores.get(job.id, 0.0), reverse=True)
+
+        logger.info(f"Retrieved {len(matched_jobs_from_db)} full job objects from DB for user {user_id}.")
+        return matched_jobs_from_db
     except Exception as e:
         logger.error(f"Error searching for similar jobs in Qdrant: {e}")
         return []

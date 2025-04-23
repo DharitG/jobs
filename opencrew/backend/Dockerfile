@@ -35,10 +35,13 @@ ENV PYTHONUSERBASE=/home/appuser/.local
 RUN useradd --create-home --user-group --shell /bin/bash appuser
 USER appuser
 WORKDIR /home/appuser/app
+ENV PATH="/home/appuser/.local/bin:${PATH}"
 
 # Copy installed dependencies from builder stage
 COPY --from=builder /wheels /wheels
 COPY --from=builder /app/requirements.txt .
+RUN pip install grpcio # Install grpcio separately first
+RUN pip install grpcio-status # Install grpcio-status separately
 RUN pip install --no-index --find-links=/wheels -r requirements.txt
 
 # Copy Playwright browsers from builder stage

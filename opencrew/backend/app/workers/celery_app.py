@@ -1,6 +1,40 @@
+import logging # Add logging import
 from celery import Celery
 
 from ..core.config import settings
+
+# --- Sentry Integration ---
+import sentry_sdk
+from sentry_sdk.integrations.celery import CeleryIntegration
+
+logger = logging.getLogger(__name__) # Add logger
+
+if settings.SENTRY_DSN:
+    try:
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            integrations=[
+                CeleryIntegration(monitor_beat_tasks=True), # Monitor beat tasks as well
+            ],
+            # Set traces_sample_rate to 1.0 to capture 100%
+            # of transactions for performance monitoring.
+            # We recommend adjusting this value in production.
+            traces_sample_rate=1.0, # Adjust as needed
+            # Set profiles_sample_rate to 1.0 to profile 100%
+            # of sampled transactions.
+            # We recommend adjusting this value in production.
+            profiles_sample_rate=1.0, # Adjust as needed
+            # Consider adding environment, release from settings if available
+            # environment=settings.ENVIRONMENT,
+            # release=settings.APP_VERSION,
+        )
+        logger.info("Sentry SDK initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to initialize Sentry SDK: {e}", exc_info=True)
+else:
+    logger.info("SENTRY_DSN not found in settings. Skipping Sentry initialization.")
+# --- End Sentry Integration ---
+
 
 # Initialize Celery
 # The first argument is the name of the current module, useful for auto-generating task names.
@@ -23,6 +57,8 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     # Add other configurations like rate limits later if needed
+    task_acks_late = True, # Example: Ensure tasks only ack after completion/failure
+    worker_prefetch_multiplier = 1, # Example: Ensure worker only takes 1 task at a time if tasks are long-running
     # task_routes = {
     #     'app.workers.tasks.process_payment': {'queue': 'payments'},
     # }
@@ -39,4 +75,4 @@ celery_app.conf.update(
 if __name__ == "__main__":
     # This allows running the worker directly for testing
     # Command: celery -A app.workers.celery_app worker --loglevel=info
-    celery_app.start() # Note: Usually run via CLI command, not directly started like this 
+    celery_app.start() # Note: Usually run via CLI command, not directly started like this
