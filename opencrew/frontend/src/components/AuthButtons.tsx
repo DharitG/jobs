@@ -36,18 +36,18 @@ export function AuthButtons() {
       {!user && (
         <> {/* Fragment to return multiple buttons */}
           <Button
-            variant="ghost" // Make login look like text
+            variant="ghost" // Keep variant as ghost/secondary equivalent
             onClick={handleLogin}
-            className="text-sm font-medium text-grey-90 hover:text-grey-60 dark:text-neutral-300 dark:hover:text-neutral-100" // Ensure text color visible
+            className="text-sm font-medium text-grey-40 hover:text-grey-90 dark:text-neutral-300" // Apply old styles
           >
             Log In
           </Button>
           <Button
-            variant="default" // Primary button style for sign up
+            variant="default" // Keep variant as primary equivalent
             onClick={handleSignUp}
-            className="bg-primary-500 hover:bg-primary-600 text-white shadow-1 hover:-translate-y-px hover:shadow-md transition-all duration-150 ease-out text-sm"
+            className="text-sm" // Apply old styles
           >
-            Sign Up
+            Get Started {/* Change text back to Get Started */}
           </Button>
         </>
       )}
@@ -56,7 +56,7 @@ export function AuthButtons() {
         <Button
           variant="secondary" // Or ghost, depending on desired prominence
           onClick={handleLogout}
-          className="border-primary-500 text-primary-500 hover:bg-primary-500/10 transition-all duration-150 ease-out text-sm"
+          className="border-primary-500 text-primary-500 hover:bg-primary-500/10 transition-all duration-150 ease-out text-sm" // Apply style from provided old AuthButton snippet
         >
           Log Out
         </Button>
