@@ -3,60 +3,65 @@
 import React from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { Button } from './ui/button';
-import type { Database } from '~/lib/supabase_types'; // Use type-only import
-import { useRouter } from 'next/navigation'; // Import useRouter for navigation
+import type { Database } from '~/lib/supabase_types';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast'; // Import toast for logout feedback
 
-export function AuthButtons() {
+// Define props for the trigger functions
+interface AuthButtonsProps {
+  onSignInClick: () => void;
+  onSignUpClick: () => void;
+}
+
+export function AuthButtons({ onSignInClick, onSignUpClick }: AuthButtonsProps) {
   const supabase = useSupabaseClient<Database>();
   const user = useUser();
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
 
-  // Navigate to the sign-in page
-  const handleLogin = () => {
-    router.push('/sign-in');
-  };
+  // Removed handleLogin and handleSignUp as they are now handled by props
 
-  // Navigate to the sign-up page
-  const handleSignUp = () => {
-    router.push('/sign-up');
-  };
-
-  // Handle logout
+  // Handle logout remains mostly the same, adding toast feedback
   const handleLogout = async () => {
+    const toastId = toast.loading('Logging out...');
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error logging out:', error.message);
-      // TODO: Show user-friendly error message
+      toast.error(`Logout failed: ${error.message}`, { id: toastId });
+    } else {
+      toast.success('Logged out successfully!', { id: toastId });
+      // Redirect to home page after logout for better UX
+      router.push('/');
+      router.refresh(); // Ensures user state is updated visually
     }
-    // You might want to redirect after logout, e.g., router.push('/');
   };
 
   return (
-    <div className="flex items-center gap-4"> {/* Use flex container */}
+    <div className="flex items-center gap-4">
       {!user && (
-        <> {/* Fragment to return multiple buttons */}
+        <>
+          {/* Call the functions passed via props */}
           <Button
-            variant="ghost" // Keep variant as ghost/secondary equivalent
-            onClick={handleLogin}
-            className="text-sm font-medium text-grey-40 hover:text-grey-90 dark:text-neutral-300" // Apply old styles
+            variant="ghost"
+            onClick={onSignInClick} // Use prop function
+            className="text-sm font-medium text-grey-40 hover:text-grey-90 dark:text-neutral-300"
           >
             Log In
           </Button>
           <Button
-            variant="default" // Keep variant as primary equivalent
-            onClick={handleSignUp}
-            className="text-sm" // Apply old styles
+            variant="default"
+            onClick={onSignUpClick} // Use prop function
+            className="text-sm"
           >
-            Get Started {/* Change text back to Get Started */}
+            Get Started {/* Keep text as Get Started */}
           </Button>
         </>
       )}
 
       {user && (
         <Button
-          variant="secondary" // Or ghost, depending on desired prominence
+          variant="secondary"
           onClick={handleLogout}
-          className="border-primary-500 text-primary-500 hover:bg-primary-500/10 transition-all duration-150 ease-out text-sm" // Apply style from provided old AuthButton snippet
+          className="border-primary-500 text-primary-500 hover:bg-primary-500/10 transition-all duration-150 ease-out text-sm"
         >
           Log Out
         </Button>
