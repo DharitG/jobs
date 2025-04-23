@@ -12,14 +12,14 @@
 This section covers the primary development focus, including the auto-apply mechanism and the systems it directly relies upon (scraping, matching, resume optimization, core UI).
 
 ### Auto-Apply Service (`services/autosubmit.py`)
-*   🚧 **Adapter Pattern (Form Policy):** Implement handling for site-specific quirks (EEOC modals, file uploads, scrolling). Needs site-specific examples.
-*   🚧 **CAPTCHA Strategy (Tier 2 - Auto-solve):** Implement `CaptchaGate.solve` using services like 2Captcha/Anti-Captcha. Requires external service integration.
-*   ⬜ **CAPTCHA Strategy (Tier 3 - AI-solve):** Implement OCR/simple math solving for basic CAPTCHAs. Requires additional libraries/setup.
-*   ⬜ **CAPTCHA Strategy (Tier 4 - Human-loop):** Implement escalation to a human review queue. Requires external service/tooling.
+*   ✅ **Site Interaction Logic:** Handled by `browser_use.Agent` based on task prompt. Requires prompt refinement for specific quirks.
+*   ✅ **CAPTCHA Strategy:** Handled by `browser_use.Agent` / underlying service. Requires monitoring agent's success rate.
+*   ⬜ **(Obsolete) CAPTCHA Strategy (Tier 3 - AI-solve):** Implement OCR/simple math solving for basic CAPTCHAs. Requires additional libraries/setup.
+*   ⬜ **(Obsolete) CAPTCHA Strategy (Tier 4 - Human-loop):** Implement escalation to a human review queue. Requires external service/tooling.
 *   🚧 **Error Telemetry & Artifacts:** Fully integrate error reporting (e.g., Sentry) and artifact storage (e.g., S3). Currently placeholders. *(Update: Basic local saving of HTML/Screenshot on failure added to autosubmit.py)*
 *   ⬜ **Self-Healing & Testing:** Implement nightly synthetic runs, golden-path tests in CI. Requires CI setup.
 *   🚧 **Pro/Elite Tier Logic:** Refine unlimited quota logic (Pro) and implement actual throttling heuristics (Elite). Currently placeholders. *(Note: Quota check seems okay for Pro/Elite 'unlimited', throttling is just a sleep)*.
-*   🚧 **Complete Adapter Implementations:** Finish detailed logic for Greenhouse, Lever, Indeed, Workday adapters (custom questions, EEOC handling, specific form policies). (Basic Greenhouse/Lever adapters implemented for standard fields).
+*   ✅ **Site Adapters:** Replaced by `browser_use.Agent`. Prompt engineering handles site-specific instructions.
 *   ⬜ **Full Human Emulation:** Implement robust fingerprinting, header rotation, proxy management.
 *   ⬜ **Advanced Submission Verification:** Explore network hooks or email watching for more reliable success confirmation.
 
@@ -111,11 +111,3 @@ Tasks related to setting up deployment pipelines and implementing core logic ide
 *   🚧 **Frontend Unit Tests (`vitest`):** Complete unit tests for remaining components and hooks. Ensure adequate coverage.
 *   ⬜ **End-to-End Tests:** Write E2E tests (e.g., Cypress, Playwright) for critical user flows (signup, login, applying, optimizing resume, upgrading subscription).
 
----
-
-## 5. Manual / Non-Coding Tasks
-
-*   ⬜ Register `jobbright.ai` domain.
-*   ⬜ Create wait-list page on Vercel (if needed).
-*   ⬜ Book 5 international-student focus calls.
-*   ⬜ Draft Privacy Policy & ToS (incl. AI disclosure).

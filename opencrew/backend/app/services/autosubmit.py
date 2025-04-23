@@ -18,6 +18,11 @@ import os
 from dotenv import load_dotenv
 from browser_use import Agent # The core agent from browser-use
 from langchain_openai import ChatOpenAI # Example LLM integration
+from pydantic import ValidationError # For loading structured data
+
+# Import the new PDF generator service and schema
+from .pdf_generator import StructuredResumePdfGenerator
+from ..schemas.resume import StructuredResume
 
 load_dotenv() # Load .env file for API keys
 # --- End New Imports ---
@@ -174,6 +179,9 @@ async def apply_to_job_async(db: Session, application_id: int):
     """
     logger.info(f"Starting async auto-apply process for application ID: {application_id}")
     application: Application | None = None # Use imported Application type
+    original_temp_resume_path = None # Path for the original downloaded resume
+    tailored_resume_path = None # Path for the newly generated tailored PDF
+
     try:
         # --- Fetch Application Details ---
         application = db.query(Application).filter(Application.id == application_id).first() # Use imported Application type
@@ -228,202 +236,217 @@ async def apply_to_job_async(db: Session, application_id: int):
             "phone": user.phone_number or "", # Use new field
             "linkedin_url": user.linkedin_url or "" # Use new field
         }
-        # The JobApplicationTask dataclass was part of the old Playwright approach,
-        # we can remove it or just not use it here. The prompt needs the path directly.
         # Ensure resume.original_filepath (S3 key) is available.
         resume_s3_key = resume.original_filepath
         if not resume_s3_key:
              # This case should have been caught earlier, but double-check
-             logger.error(f"Critical: Resume S3 key missing before agent execution for app {application_id}.")
+             logger.error(f"Critical: Resume S3 key missing before execution for app {application_id}.")
              application.status = ApplicationStatus.ERROR # Use imported Enum
-             application.notes = "Critical: Resume S3 key missing just before agent call."
+             application.notes = "Critical: Resume S3 key missing just before execution."
              db.add(application)
              db.commit()
              return
 
+        # --- Download Original Resume from S3 to Temporary File ---
+        # Check S3 configuration first
+        if not settings.S3_BUCKET_NAME or not settings.AWS_ACCESS_KEY_ID or not settings.AWS_SECRET_ACCESS_KEY:
+             logger.error(f"S3 credentials or bucket name not configured. Cannot download resume for app {application_id}.")
+             raise ValueError("S3 storage not configured for resume download.") # Raise error to stop processing
+
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION_NAME
+        )
+        # Create a temporary file with the correct extension (e.g., .pdf)
+        file_suffix = Path(resume_s3_key).suffix or '.pdf' # Get suffix from key or default
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_suffix) as temp_file:
+            original_temp_resume_path = temp_file.name # Store the path of the original download
+            logger.info(f"Downloading original resume from s3://{settings.S3_BUCKET_NAME}/{resume_s3_key} to {original_temp_resume_path} for app {application_id}")
+            s3_client.download_file(settings.S3_BUCKET_NAME, resume_s3_key, original_temp_resume_path)
+            logger.info(f"Successfully downloaded original resume to {original_temp_resume_path}")
+        # --- End Download ---
+
+        # --- Generate Tailored PDF if Structured Data Exists ---
+        resume_to_use_path = original_temp_resume_path # Default to original S3 resume
+        if resume.structured_data:
+            logger.info(f"Structured data found for resume ID {resume.id}. Attempting to generate tailored PDF.")
+            try:
+                # Load structured data into Pydantic model
+                structured_resume = StructuredResume(**resume.structured_data)
+
+                # Instantiate generator and generate PDF
+                pdf_generator = StructuredResumePdfGenerator()
+                temp_pdf_dir = tempfile.gettempdir() # Use system temp dir
+                tailored_resume_path = pdf_generator.generate_resume_pdf(structured_resume, temp_pdf_dir)
+                logger.info(f"Successfully generated tailored PDF: {tailored_resume_path}")
+                resume_to_use_path = tailored_resume_path # Use the tailored PDF path for the agent
+
+            except ValidationError as ve:
+                logger.error(f"Pydantic validation error loading structured_data for resume {resume.id}: {ve}. Using original resume.", exc_info=True)
+                tailored_resume_path = None # Ensure path is None if generation fails
+            except Exception as pdf_gen_error:
+                logger.error(f"Failed to generate tailored PDF for resume {resume.id}: {pdf_gen_error}. Using original resume.", exc_info=True)
+                tailored_resume_path = None # Ensure path is None if generation fails
+        else:
+            logger.info(f"No structured data found for resume ID {resume.id}. Using original resume from S3.")
+        # --- End PDF Generation ---
+
+
         # --- Execute browser-use Agent ---
         agent_success = False
         agent_message = "Agent execution started."
-        agent_error = None
-        temp_resume_path = None # Initialize variable
+        agent_error_details = None # Changed from agent_error to avoid shadowing
+
+        # Define the task for the AI agent
+        profile_str = "\n".join([f"- {k}: {v}" for k, v in user_profile.items() if v])
+        task_prompt = f"""
+        Objective: Apply for the job at the following URL: {job.url}
+
+        Applicant Profile:
+        {profile_str}
+
+        Resume File Path: {resume_to_use_path} # Use the path to the resume file (original or tailored)
+
+        Instructions:
+        1. Navigate to the job URL: {job.url}
+        2. Fill out the application form using the provided applicant profile information.
+        3. **Important:** Handle resume upload. The resume file is located at the local path: **{resume_to_use_path}**. Use this path when interacting with the file upload element on the job site.
+        4. Handle any standard questions (like work authorization, sponsorships) appropriately based on typical US-based applicant information unless specified otherwise in the profile. You may need to select "Yes" for authorization and "No" for sponsorship if unsure and fields are required.
+        5. Answer basic EEOC questions (Gender, Race, Ethnicity, Veteran Status, Disability) by selecting "Decline to self-identify" or similar options if available and required.
+        6. Do NOT attempt to answer complex custom questions requiring free-text input (e.g., "Why do you want to work here?", salary expectations) unless the answer is directly in the profile. Skip them if possible, otherwise stop and report the blockage.
+        7. Submit the application.
+        8. Verify if the submission was successful (look for confirmation messages). If errors occur, report them.
+
+        Provide a final status message indicating success or failure, and mention any fields you couldn't fill or steps you couldn't complete.
+        """
+
+        # Configure the LLM (ensure OPENAI_API_KEY is set in .env)
+        llm = ChatOpenAI(model="gpt-4o", temperature=0.2) # Using GPT-4o as example
+
+        # Instantiate and run the agent
+        logger.info(f"Instantiating browser-use Agent for application {application_id}")
+        agent = Agent(
+            task=task_prompt,
+            llm=llm,
+            # Add browser_args, viewport, etc. if needed for stealth/config
+            # browser_args=["--no-sandbox"], # Example for Linux environments
+            # viewport={"width": 1920, "height": 1080}
+        )
+
+        history = await agent.run() # agent.run() returns AgentHistoryList
+        logger.info(f"Agent execution finished for application {application_id}.")
+        # logger.debug(f"Agent history details: {history}") # Optional: Log full history for debugging
+
+        # --- Interpret Agent Result using AgentHistoryList ---
+        final_screenshot_url = None # Initialize outside try block
 
         try:
-            # --- Download Resume from S3 to Temporary File ---
-            # Check S3 configuration first
-            if not settings.S3_BUCKET_NAME or not settings.AWS_ACCESS_KEY_ID or not settings.AWS_SECRET_ACCESS_KEY:
-                 logger.error(f"S3 credentials or bucket name not configured. Cannot download resume for app {application_id}.")
-                 raise ValueError("S3 storage not configured for resume download.") # Raise error to stop processing
+            if history and history.is_done() and not history.has_errors():
+                agent_success = True
+                agent_message = history.final_result() or "Application submitted successfully by agent."
+                logger.info(f"Agent task marked as done without errors for application {application_id}. Final result: {agent_message}")
+                # Upload final screenshot on success
+                final_screenshot_url = upload_screenshot_to_s3(history, application_id, "success")
 
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_REGION_NAME
-            )
-            # Create a temporary file with the correct extension (e.g., .pdf)
-            file_suffix = Path(resume_s3_key).suffix or '.pdf' # Get suffix from key or default
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_suffix) as temp_file:
-                temp_resume_path = temp_file.name # Store the path
-                logger.info(f"Downloading resume from s3://{settings.S3_BUCKET_NAME}/{resume_s3_key} to {temp_resume_path} for app {application_id}")
-                s3_client.download_file(settings.S3_BUCKET_NAME, resume_s3_key, temp_resume_path)
-                logger.info(f"Successfully downloaded resume to {temp_resume_path}")
-            # --- End Download ---
+            elif history:
+                # Agent finished but didn't mark as done, or encountered errors
+                agent_success = False
+                errors = history.errors()
+                final_output = history.final_result()
+                if errors:
+                    agent_error_details = "; ".join(map(str, errors)) # Combine multiple errors if they exist
+                    agent_message = f"Agent encountered errors: {agent_error_details}"
+                    if final_output:
+                        agent_message += f" | Final agent output: {final_output}"
+                    logger.warning(f"Agent task had errors for application {application_id}: {agent_error_details}")
+                elif not history.is_done():
+                    agent_message = f"Agent did not complete the task. Final output: {final_output}"
+                    logger.warning(f"Agent task not marked as done for application {application_id}. Final output: {final_output}")
+                else: # Should ideally not happen if has_errors() is reliable
+                    agent_message = f"Agent finished with unclear status (done: {history.is_done()}, errors: {history.has_errors()}). Final output: {final_output}"
+                    logger.warning(agent_message)
+                # Upload final screenshot on failure/error
+                final_screenshot_url = upload_screenshot_to_s3(history, application_id, "failure")
 
-            # Define the task for the AI agent
-            # This prompt needs careful crafting!
-            profile_str = "\n".join([f"- {k}: {v}" for k, v in user_profile.items() if v])
-            task_prompt = f"""
-            Objective: Apply for the job at the following URL: {job.url}
+            else:
+                # Should not happen if agent.run() always returns history, but handle defensively
+                agent_success = False
+                agent_message = "Agent execution finished but no history object was returned."
+                logger.error(agent_message)
 
-            Applicant Profile:
-            {profile_str}
+        except Exception as history_parse_error:
+             logger.error(f"Error parsing agent history for application {application_id}: {history_parse_error}", exc_info=True)
+             agent_success = False
+             agent_message = f"Failed to interpret agent result: {history_parse_error}"
+             agent_error_details = str(history_parse_error)
 
-            Resume File Path: {temp_resume_path} # Use the downloaded local path
 
-            Instructions:
-            1. Navigate to the job URL: {job.url}
-            2. Fill out the application form using the provided applicant profile information.
-            3. **Important:** Handle resume upload. The resume file is located at the local path: **{temp_resume_path}**. Use this path when interacting with the file upload element on the job site.
-            4. Handle any standard questions (like work authorization, sponsorships) appropriately based on typical US-based applicant information unless specified otherwise in the profile. You may need to select "Yes" for authorization and "No" for sponsorship if unsure and fields are required.
-            5. Answer basic EEOC questions (Gender, Race, Ethnicity, Veteran Status, Disability) by selecting "Decline to self-identify" or similar options if available and required.
-            6. Do NOT attempt to answer complex custom questions requiring free-text input (e.g., "Why do you want to work here?", salary expectations) unless the answer is directly in the profile. Skip them if possible, otherwise stop and report the blockage.
-            7. Submit the application.
-            8. Verify if the submission was successful (look for confirmation messages). If errors occur, report them.
+    except Exception as agent_exec_error:
+        # Catch errors during the agent instantiation or run() call itself, or PDF generation/download
+        logger.error(f"Error during auto-apply setup or execution for application {application_id}: {agent_exec_error}", exc_info=True)
+        agent_success = False
+        agent_message = f"Auto-apply setup or agent execution failed: {agent_exec_error}"
+        agent_error_details = str(agent_exec_error)
+        # Attempt to save screenshot even if agent execution failed mid-way, if history exists (unlikely here)
+        # if 'history' in locals() and history:
+        #      final_screenshot_url = upload_screenshot_to_s3(history, application_id, "failure_exec")
 
-            Provide a final status message indicating success or failure, and mention any fields you couldn't fill or steps you couldn't complete.
-            """
 
-            # Configure the LLM (ensure OPENAI_API_KEY is set in .env)
-            llm = ChatOpenAI(model="gpt-4o", temperature=0.2) # Using GPT-4o as example
-
-            # Instantiate and run the agent
-            logger.info(f"Instantiating browser-use Agent for application {application_id}")
-            agent = Agent(
-                task=task_prompt,
-                llm=llm,
-                # Add browser_args, viewport, etc. if needed for stealth/config
-                # browser_args=["--no-sandbox"], # Example for Linux environments
-                # viewport={"width": 1920, "height": 1080}
-            )
-            agent_result_raw = await agent.run() # agent.run() might return logs or a final status
-            logger.info(f"Agent execution finished for application {application_id}. Raw result: {agent_result_raw}")
-
-            history = await agent.run() # agent.run() returns AgentHistoryList
-            logger.info(f"Agent execution finished for application {application_id}.")
-            # logger.debug(f"Agent history details: {history}") # Optional: Log full history for debugging
-
-            # --- Interpret Agent Result using AgentHistoryList ---
-            agent_success = False
-            agent_message = "Agent execution completed." # Default message
-            agent_error_details = None
-            final_screenshot_url = None # Initialize outside try block
-            # full_trace_path = None # browser-use might offer ways to get traces
-
+    finally:
+        # --- Clean up temporary resume files ---
+        # Delete original downloaded resume
+        if original_temp_resume_path and Path(original_temp_resume_path).exists():
             try:
-                if history and history.is_done() and not history.has_errors():
-                    agent_success = True
-                    agent_message = history.final_result() or "Application submitted successfully by agent."
-                    logger.info(f"Agent task marked as done without errors for application {application_id}. Final result: {agent_message}")
-                    # Potentially save final screenshot on success too?
-                    # final_screenshot_path = save_screenshot_from_history(history, application_id, "success")
-                    # Upload final screenshot on success
-                    final_screenshot_url = upload_screenshot_to_s3(history, application_id, "success")
+                Path(original_temp_resume_path).unlink()
+                logger.info(f"Successfully deleted temporary original resume file: {original_temp_resume_path}")
+            except Exception as cleanup_error:
+                logger.error(f"Failed to delete temporary original resume file {original_temp_resume_path}: {cleanup_error}")
+        # Delete tailored generated resume if it exists
+        if tailored_resume_path and Path(tailored_resume_path).exists():
+            try:
+                Path(tailored_resume_path).unlink()
+                logger.info(f"Successfully deleted temporary tailored resume file: {tailored_resume_path}")
+            except Exception as cleanup_error:
+                logger.error(f"Failed to delete temporary tailored resume file {tailored_resume_path}: {cleanup_error}")
 
+    # --- Update Application Status (Moved outside main try block to ensure it runs even if agent init fails) ---
+    # Ensure application object is available
+    if not application:
+         logger.error(f"Application object is None, cannot update status for application ID {application_id}")
+         # Attempt to fetch again or handle error appropriately
+         # This case should ideally be prevented by earlier checks, but handle defensively.
+         try:
+             db.rollback() # Rollback any potential uncommitted changes from failed setup
+         except Exception as rb_err:
+              logger.error(f"Rollback failed after application object became None for ID {application_id}: {rb_err}")
+         return # Cannot proceed without application object
 
-                elif history:
-                    # Agent finished but didn't mark as done, or encountered errors
-                    agent_success = False
-                    errors = history.errors()
-                    final_output = history.final_result()
-                    if errors:
-                        agent_error_details = "; ".join(map(str, errors)) # Combine multiple errors if they exist
-                        agent_message = f"Agent encountered errors: {agent_error_details}"
-                        if final_output:
-                            agent_message += f" | Final agent output: {final_output}"
-                        logger.warning(f"Agent task had errors for application {application_id}: {agent_error_details}")
-                    elif not history.is_done():
-                        agent_message = f"Agent did not complete the task. Final output: {final_output}"
-                        logger.warning(f"Agent task not marked as done for application {application_id}. Final output: {final_output}")
-                    else: # Should ideally not happen if has_errors() is reliable
-                        agent_message = f"Agent finished with unclear status (done: {history.is_done()}, errors: {history.has_errors()}). Final output: {final_output}"
-                        logger.warning(agent_message) # Fix indentation
-                    # Upload final screenshot on failure/error
-                    final_screenshot_url = upload_screenshot_to_s3(history, application_id, "failure")
+    if agent_success:
+        application.status = ApplicationStatus.APPLIED # Use imported Enum
+        application.applied_at = datetime.utcnow()
+        application.notes = agent_message # Use message derived from history
+    else:
+        application.status = ApplicationStatus.ERROR # Use imported Enum (Or a more specific failure status)
+        # Combine message and error details for notes
+        application.notes = f"Auto-apply failed. Reason: {agent_message}" # Updated message prefix
+        if agent_error_details:
+            application.notes += f" | Details: {agent_error_details}" # Updated label
 
+    # Save the S3 URL to the database (if generated)
+    if 'final_screenshot_url' in locals() and final_screenshot_url:
+        application.screenshot_url = final_screenshot_url
+    else:
+         application.screenshot_url = None # Ensure it's null if upload failed or wasn't attempted
 
-                    # Save final screenshot on failure/error
-                    # final_screenshot_path = save_screenshot_from_history(history, application_id, "failure")
-
-                else:
-                    # Should not happen if agent.run() always returns history, but handle defensively
-                    agent_success = False
-                    agent_message = "Agent execution finished but no history object was returned."
-                    logger.error(agent_message)
-
-            except Exception as history_parse_error:
-                 logger.error(f"Error parsing agent history for application {application_id}: {history_parse_error}", exc_info=True)
-                 agent_success = False
-                 agent_message = f"Failed to interpret agent result: {history_parse_error}"
-                 agent_error_details = str(history_parse_error)
-
-
-        except Exception as agent_exec_error:
-            # Catch errors during the agent.run() call itself
-            logger.error(f"Error during browser-use Agent execution for application {application_id}: {agent_exec_error}", exc_info=True)
-            agent_success = False
-            agent_message = f"Agent execution failed with exception: {agent_exec_error}"
-            agent_error_details = str(agent_exec_error)
-            # Attempt to save screenshot even if agent execution failed mid-way, if history exists
-            if 'history' in locals() and history:
-                 final_screenshot_url = upload_screenshot_to_s3(history, application_id, "failure_exec")
-
-
-        finally:
-            # --- Clean up temporary resume file ---
-            if temp_resume_path and Path(temp_resume_path).exists():
-                try:
-                    Path(temp_resume_path).unlink()
-                    logger.info(f"Successfully deleted temporary resume file: {temp_resume_path}")
-                except Exception as cleanup_error:
-                    logger.error(f"Failed to delete temporary resume file {temp_resume_path}: {cleanup_error}")
-
-        # --- Update Application Status Based on Agent Outcome ---
-        if agent_success:
-            application.status = ApplicationStatus.APPLIED # Use imported Enum
-            application.applied_at = datetime.utcnow()
-            application.notes = agent_message # Use message derived from history
-        else:
-            application.status = ApplicationStatus.ERROR # Use imported Enum (Or a more specific failure status)
-            # Combine message and error details for notes
-            application.notes = f"AI Agent failed. Reason: {agent_message}"
-            if agent_error_details:
-                application.notes += f" | Errors: {agent_error_details}"
-
-        # Save the S3 URL to the database
-        if final_screenshot_url:
-            application.screenshot_url = final_screenshot_url
-        else:
-             application.screenshot_url = None # Ensure it's null if upload failed
-        # if full_trace_path:
-        #     application.trace_url = await upload_artifact(full_trace_path) # Example upload function
-
+    try:
         db.add(application)
         db.commit()
         logger.info(f"Finished auto-apply attempt for application ID: {application_id}. Agent Success: {agent_success}. Final Status: {application.status}. Final Notes: {application.notes}")
-
-    except Exception as e:
-        logger.exception(f"Critical error during async auto-apply for application {application_id}", exc_info=e)
-        if application: # Attempt to mark as error if possible
-            try:
-                application.status = ApplicationStatus.ERROR # Use imported Enum
-                application.notes = f"Critical error during execution: {e}"
-                db.add(application)
-                db.commit()
-            except Exception as final_update_e:
-                logger.error(f"Failed to update application {application_id} status to ERROR after critical failure: {final_update_e}")
-                db.rollback()
-        else:
-             db.rollback() # Rollback if commit failed or application not fetched
+    except Exception as final_commit_e:
+         logger.error(f"Failed to commit final application status update for ID {application_id}: {final_commit_e}", exc_info=True)
+         db.rollback()
 
 
 # --- Quota Checking Logic (Unchanged) ---
