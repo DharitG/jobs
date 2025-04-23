@@ -6,7 +6,7 @@ from app import schemas # Import schemas
 from app.models.user import User # Import User model specifically
 from app.services import visa_alerts # Absolute import
 from app.db.session import get_db # Absolute import
-from app.core.security import get_current_active_user # Absolute import (Note: different function than other APIs)
+from app.api.users import get_current_active_user # Absolute import from correct module
 
 router = APIRouter()
 

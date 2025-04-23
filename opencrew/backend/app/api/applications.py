@@ -7,10 +7,11 @@ from typing import List
 import logging
 import tempfile
 
-from app import crud, schemas # Import crud and schemas
+from app import crud # Import crud only
+from app.schemas.application import Application, ApplicationCreate, ApplicationUpdate # Import application schemas directly
 from app.models.user import User # Import User model specifically
 from app.db.session import get_db # Absolute import
-from app.api.users import get_current_user # Absolute import
+from app.api.users import get_current_active_user # Correct import name
 from app.workers.tasks import trigger_auto_apply # Absolute import
 from app.models.application import ApplicationStatus # Absolute import
 
@@ -18,12 +19,12 @@ from app.models.application import ApplicationStatus # Absolute import
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/", response_model=schemas.Application, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=Application, status_code=status.HTTP_201_CREATED) # Use direct import
 def create_application(
     *, 
     db: Session = Depends(get_db), 
-    application_in: schemas.ApplicationCreate, 
-    current_user: User = Depends(get_current_user) # Use imported User type
+    application_in: ApplicationCreate, # Use direct import
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Create a new application record for the current user.
     
@@ -66,12 +67,12 @@ def create_application(
     except ValueError as e: # Catch specific error from CRUD if needed
          raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.get("/", response_model=List[schemas.Application])
+@router.get("/", response_model=List[Application]) # Use direct import
 def read_applications(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Retrieve applications for the current user."""
     applications = crud.application.get_applications_by_user(
@@ -79,12 +80,12 @@ def read_applications(
     )
     return applications
 
-@router.get("/{application_id}", response_model=schemas.Application)
+@router.get("/{application_id}", response_model=Application) # Use direct import
 def read_application(
     *, 
     db: Session = Depends(get_db), 
     application_id: int, 
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Get a specific application by ID, ensuring it belongs to the current user."""
     db_application = crud.application.get_application(db, application_id=application_id)
@@ -95,13 +96,13 @@ def read_application(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this application")
     return db_application
 
-@router.put("/{application_id}", response_model=schemas.Application)
+@router.put("/{application_id}", response_model=Application) # Use direct import
 def update_application(
     *, 
     db: Session = Depends(get_db), 
     application_id: int, 
-    application_in: schemas.ApplicationUpdate, 
-    current_user: User = Depends(get_current_user) # Use imported User type
+    application_in: ApplicationUpdate, # Use direct import
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Update a job application. Triggers auto-apply task if status changes to APPLYING and quota allows."""
     # Fetch the application ensuring it belongs to the current user
@@ -145,7 +146,7 @@ def update_application(
 async def delete_application_endpoint(
     application_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Delete a tracked job application."""
     deleted_application = crud.application.delete_application(
@@ -161,7 +162,7 @@ async def delete_application_endpoint(
 async def get_application_screenshot(
     application_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Get the final screenshot associated with a specific application."""
     db_application = crud.application.get_application(db, application_id=application_id)

@@ -2,27 +2,29 @@ import uuid # Import uuid
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 
-from .. import models, schemas
+# Import schemas directly from their module
+from ..schemas.user import UserCreate, UserUpdate
+from ..models.user import User # Import User model directly
 # from ..core.security import get_password_hash, verify_password # Removed for Auth0
 
-def get_user(db: Session, user_id: int) -> models.User | None:
-    return db.query(models.User).filter(models.User.id == user_id).first()
+def get_user(db: Session, user_id: int) -> User | None: # Use direct model import
+    return db.query(User).filter(User.id == user_id).first() # Use direct model import
 
-def get_user_by_email(db: Session, email: str) -> models.User | None:
-    return db.query(models.User).filter(models.User.email == email).first()
+def get_user_by_email(db: Session, email: str) -> User | None: # Use direct model import
+    return db.query(User).filter(User.email == email).first() # Use direct model import
 
 # Renamed function and updated type/column
-def get_user_by_supabase_id(db: Session, supabase_id: uuid.UUID) -> models.User | None:
+def get_user_by_supabase_id(db: Session, supabase_id: uuid.UUID) -> User | None: # Use direct model import
     """Gets a user by their Supabase user ID."""
-    return db.query(models.User).filter(models.User.supabase_user_id == supabase_id).first()
+    return db.query(User).filter(User.supabase_user_id == supabase_id).first() # Use direct model import
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.User).offset(skip).limit(limit).all()
+    return db.query(User).offset(skip).limit(limit).all() # Use direct model import
 
-def create_user(db: Session, user: schemas.UserCreate) -> models.User:
+def create_user(db: Session, user: UserCreate) -> User: # Use direct schema import
     """Creates a user based on Supabase info (no password)."""
     # hashed_password = get_password_hash(user.password) # Removed for Auth0
-    db_user = models.User(
+    db_user = User( # Use direct model import
         email=user.email,
         supabase_user_id=user.supabase_user_id, # Changed from auth0_sub
         full_name=user.full_name
@@ -33,7 +35,7 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     db.refresh(db_user)
     return db_user
 
-def update_user(db: Session, db_user: models.User, user_in: schemas.UserUpdate) -> models.User:
+def update_user(db: Session, db_user: User, user_in: UserUpdate) -> User: # Use direct schema import
     """Updates user profile information (e.g., full_name)."""
     user_data = user_in.model_dump(exclude_unset=True)
     # Password update logic removed
@@ -46,7 +48,7 @@ def update_user(db: Session, db_user: models.User, user_in: schemas.UserUpdate) 
     db.refresh(db_user)
     return db_user
 
-def update_user_streak(db: Session, db_user: models.User) -> models.User:
+def update_user_streak(db: Session, db_user: User) -> User: # Use direct model import
     """
     Updates the user's daily streak based on the current time and last update.
     This should be called when a user performs an action that counts towards the streak (e.g., logs in, completes a task).

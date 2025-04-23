@@ -1,17 +1,16 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional # Add Optional import
 
 
 # Shared properties
 class ResumeBase(BaseModel):
-    filename: str | None = None
+    filename: Optional[str] = None
     content: str # Assuming text content for now
     # Store as JSON in DB, handled as dict/Any in Pydantic
-    embedding: Any | None = None
-    optimization_diffs: Any | None = None
-    structured_data: 'StructuredResume' | None = None # Forward reference
+    embedding: Optional[Any] = None
+    optimization_diffs: Optional[Any] = None
+    structured_data: Optional['StructuredResume'] = None # Forward reference using Optional
 
 # Properties to receive via API on creation
 class ResumeCreate(ResumeBase):
@@ -19,27 +18,28 @@ class ResumeCreate(ResumeBase):
 
 # Properties to receive via API on update
 class ResumeUpdate(BaseModel): # Inherit directly from BaseModel for full control
-    filename: str | None = None
-    content: str | None = None
-    embedding: Any | None = None # Allow updating embedding
-    optimization_diffs: Any | None = None
-    structured_data: 'StructuredResume' | None = None # Allow updating structured_data
+    filename: Optional[str] = None
+    content: Optional[str] = None
+    embedding: Optional[Any] = None # Allow updating embedding
+    optimization_diffs: Optional[Any] = None
+    structured_data: Optional['StructuredResume'] = None # Allow updating structured_data using Optional
 
 # Properties shared by models stored in DB
 class ResumeInDBBase(ResumeBase):
     id: int
     owner_id: int
     created_at: datetime
-    updated_at: datetime | None = None
-    embedding: Any | None = None # DB stores JSONB
-    optimization_diffs: Any | None = None # DB stores JSONB
-    structured_data: Any | None = None # DB stores JSONB
+    updated_at: Optional[datetime] = None
+    embedding: Optional[Any] = None # DB stores JSONB
+    optimization_diffs: Optional[Any] = None # DB stores JSONB
+    structured_data: Optional[Any] = None # DB stores JSONB using Optional
 
     class Config:
         from_attributes = True # Pydantic V2
 
 # Properties to return to client
 class Resume(ResumeInDBBase):
+    original_filepath: Optional[str] = None # Add the missing field
     pass # Inherits all from ResumeInDBBase, adjust if needed
 
 # Properties stored in DB (potentially including relationships)
@@ -63,48 +63,48 @@ class PdfTextItem(BaseModel):
 class ResumeParseRequest(BaseModel):
     text_items: List[PdfTextItem]
     # Optionally include job description or job ID here if needed for tailoring
-    job_description: str | None = None 
-    job_id: int | None = None
-    resume_id: int | None = None # ID of the existing resume to update
+    job_description: Optional[str] = None
+    job_id: Optional[int] = None
+    resume_id: Optional[int] = None # ID of the existing resume to update
 
 # --- Schemas defining the structured ATS-friendly output ---
 
 class BasicInfo(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    phone: str | None = None
-    location: str | None = None
-    linkedin_url: str | None = None
-    github_url: str | None = None
-    portfolio_url: str | None = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    portfolio_url: Optional[str] = None
 
 class EducationItem(BaseModel):
     institution: str
-    area: str | None = None # e.g., Computer Science
-    studyType: str | None = None # e.g., Bachelor of Science
-    startDate: str | None = None
-    endDate: str | None = None
-    score: str | None = None # e.g., GPA
-    courses: List[str] | None = None
-    highlights: List[str] | None = None # Tailored highlights
+    area: Optional[str] = None # e.g., Computer Science
+    studyType: Optional[str] = None # e.g., Bachelor of Science
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+    score: Optional[str] = None # e.g., GPA
+    courses: Optional[List[str]] = None
+    highlights: Optional[List[str]] = None # Tailored highlights
 
 class ExperienceItem(BaseModel):
     company: str
     position: str
-    website: str | None = None
-    startDate: str | None = None
-    endDate: str | None = None
-    summary: str | None = None
-    highlights: List[str] | None = None # Tailored highlights
+    website: Optional[str] = None
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+    summary: Optional[str] = None
+    highlights: Optional[List[str]] = None # Tailored highlights
 
 class ProjectItem(BaseModel):
     name: str
-    description: str | None = None
-    keywords: List[str] | None = None
-    url: str | None = None
-    startDate: str | None = None
-    endDate: str | None = None
-    highlights: List[str] | None = None # Tailored highlights
+    description: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    url: Optional[str] = None
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+    highlights: Optional[List[str]] = None # Tailored highlights
 
 class SkillItem(BaseModel):
     category: str # e.g., Programming Languages, Frameworks, Tools
@@ -112,12 +112,12 @@ class SkillItem(BaseModel):
 
 # Schema for the structured ATS-friendly resume output from the backend
 class StructuredResume(BaseModel):
-    basic: BasicInfo | None = None
-    objective: str | None = None # Tailored objective/summary
-    education: List[EducationItem] | None = None
-    experiences: List[ExperienceItem] | None = None
-    projects: List[ProjectItem] | None = None
-    skills: List[SkillItem] | None = None
+    basic: Optional[BasicInfo] = None
+    objective: Optional[str] = None # Tailored objective/summary
+    education: Optional[List[EducationItem]] = None
+    experiences: Optional[List[ExperienceItem]] = None
+    projects: Optional[List[ProjectItem]] = None
+    skills: Optional[List[SkillItem]] = None
 
 # Allow forward reference resolution
 ResumeBase.model_rebuild()
@@ -127,4 +127,4 @@ ResumeUpdate.model_rebuild()
 # Response model for the parsing/tailoring endpoint
 class ResumeParseResponse(BaseModel):
     structured_resume: StructuredResume
-    message: str | None = None
+    message: Optional[str] = None

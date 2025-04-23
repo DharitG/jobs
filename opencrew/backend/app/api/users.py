@@ -2,8 +2,9 @@ import uuid # Import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app import crud, schemas # Import crud and schemas
-from app.models.user import User # Import User model specifically
+from app import crud # Import crud
+from app.schemas.user import User as UserSchema, UserUpdate # Import User schema specifically and alias it, also import UserUpdate
+from app.models.user import User as UserModel # Import User model specifically and alias it
 from app.db.session import get_db # Absolute import
 # Import the new Supabase dependency function
 from app.core.security import get_current_supabase_user_id # Absolute import
@@ -16,7 +17,7 @@ async def get_current_active_user(
     # Use the new dependency to get the Supabase user ID (UUID)
     current_user_id: uuid.UUID = Depends(get_current_supabase_user_id),
     db: Session = Depends(get_db)
-) -> User: # Use the directly imported User type
+) -> UserModel: # Use the aliased UserModel type
     """
     Dependency that verifies Supabase token, gets the user ID (UUID),
     and fetches the corresponding user from the database.
@@ -38,20 +39,20 @@ async def get_current_active_user(
 
 # --- User Endpoints ---
 
-@router.get("/me", response_model=schemas.User)
+@router.get("/me", response_model=UserSchema) # Use the aliased UserSchema
 async def read_users_me(
     # This dependency now provides the user model fetched via Supabase ID
-    current_user: User = Depends(get_current_active_user) # Use the directly imported User type
+    current_user: UserModel = Depends(get_current_active_user) # Use the aliased UserModel type
 ):
     """Fetch the profile of the currently logged-in user."""
     return current_user
 
-@router.put("/me", response_model=schemas.User)
+@router.put("/me", response_model=UserSchema) # Use the imported alias
 async def update_user_me(
     *,
     db: Session = Depends(get_db),
-    user_in: schemas.UserUpdate,
-    current_user: models.User = Depends(get_current_active_user)
+    user_in: UserUpdate, # Use the imported UserUpdate schema
+    current_user: UserModel = Depends(get_current_active_user) # Use the aliased UserModel type
 ):
     """Update the profile of the currently logged-in user."""
     # The dependency already fetched the current_user model

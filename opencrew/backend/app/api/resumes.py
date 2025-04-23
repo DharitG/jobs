@@ -11,7 +11,7 @@ from app import crud, schemas # Import crud and schemas
 from app.models.user import User # Import User model specifically
 from app.schemas.resume import ResumeParseRequest, ResumeParseResponse, BasicInfo, StructuredResume # Absolute import
 from app.db.session import get_db # Absolute import
-from app.api.users import get_current_user # Absolute import for dependency
+from app.api.users import get_current_active_user # Correct import name
 from app.services import profile_import # Absolute import
 from app.services import resume_tailoring # Absolute import
 import logging # Import logging
@@ -20,12 +20,12 @@ logger = logging.getLogger(__name__) # Add logger
 
 router = APIRouter()
 
-@router.post("/upload", response_model=schemas.Resume)
+@router.post("/upload", response_model=schemas.resume.Resume) # Correct path
 async def upload_resume(
     *, 
     db: Session = Depends(get_db),
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """
     Upload a resume PDF, save it to S3, extract text,
@@ -111,7 +111,7 @@ async def upload_resume(
         # )
 
     # --- Database Record Creation ---
-    resume_in = schemas.ResumeCreate(filename=file.filename, content=resume_text) # Pass text content
+    resume_in = schemas.resume.ResumeCreate(filename=file.filename, content=resume_text) # Correct path
     # Pass the S3 key separately to the CRUD function
     new_resume = crud.resume.create_resume(
         db=db,
@@ -122,74 +122,73 @@ async def upload_resume(
     logger.info(f"Created resume DB record ID {new_resume.id} for user {current_user.id} with S3 key {s3_key}")
     return new_resume
 
-@router.get("/", response_model=List[schemas.Resume])
+@router.get("/", response_model=List[schemas.resume.Resume]) # Correct path
 def read_resumes(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Retrieve resumes for the current user."""
     resumes = crud.resume.get_resumes_by_owner(db, owner_id=current_user.id, skip=skip, limit=limit)
     return resumes
 
-@router.get("/{resume_id}", response_model=schemas.Resume)
+@router.get("/{resume_id}", response_model=schemas.resume.Resume) # Correct path
 def read_resume(
     resume_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Retrieve a specific resume by ID."""
-    db_resume = crud.resume.get_resume(db, resume_id=resume_id)
+    # Pass owner_id to the CRUD function
+    db_resume = crud.resume.get_resume(db, resume_id=resume_id, owner_id=current_user.id)
     if db_resume is None:
+        # The crud function already filters by owner, so if not found, it's genuinely not found for this user.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
-    if db_resume.owner_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this resume")
+    # Ownership check is implicitly handled by get_resume now.
     return db_resume
 
-@router.put("/{resume_id}", response_model=schemas.Resume)
+@router.put("/{resume_id}", response_model=schemas.resume.Resume) # Correct path
 def update_existing_resume(
     resume_id: int,
-    resume_in: schemas.ResumeUpdate,
+    resume_in: schemas.resume.ResumeUpdate, # Correct path
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Update a specific resume."""
-    db_resume = crud.resume.get_resume(db, resume_id=resume_id)
+    # Pass owner_id to the CRUD function
+    db_resume = crud.resume.get_resume(db, resume_id=resume_id, owner_id=current_user.id)
     if db_resume is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
-    if db_resume.owner_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this resume")
+    # Ownership check is implicitly handled by get_resume now.
     updated_resume = crud.resume.update_resume(db=db, db_resume=db_resume, resume_in=resume_in)
     return updated_resume
 
-@router.delete("/{resume_id}", response_model=schemas.Resume)
+@router.delete("/{resume_id}", response_model=schemas.resume.Resume) # Correct path
 def delete_existing_resume(
     resume_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """Delete a specific resume."""
-    db_resume = crud.resume.get_resume(db, resume_id=resume_id)
-    if db_resume is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
-    if db_resume.owner_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this resume")
-    deleted_resume = crud.resume.delete_resume(db=db, resume_id=resume_id)
-    # The CRUD function already returns the deleted object or None
-    if deleted_resume is None: # Should not happen if checks above passed, but good practice
-         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found during deletion")
-    return deleted_resume 
+    # Use the dedicated remove function which handles fetching and owner check internally
+    deleted_resume = crud.resume.remove_resume(db=db, resume_id=resume_id, owner_id=current_user.id)
+    if not deleted_resume:
+        # remove_resume returns None if not found or owner mismatch
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found or not authorized")
+
+    # Return the data of the deleted resume (which remove_resume provides)
+    return deleted_resume
 
 
 # --- Endpoint for Structured PDF Parsing and Tailoring --- 
 
-@router.post("/parse-and-tailor", response_model=ResumeParseResponse)
+@router.post("/parse-and-tailor", response_model=ResumeParseResponse) # Keep using directly imported schema
 async def parse_and_tailor_resume(
     *, 
     db: Session = Depends(get_db),
-    parse_request: schemas.ResumeParseRequest, # Use the new input schema
-    current_user: User = Depends(get_current_user) # Use imported User type
+    parse_request: ResumeParseRequest, # Use directly imported schema
+    current_user: User = Depends(get_current_active_user) # Use correct dependency
 ):
     """
     Receives parsed PDF text items from the frontend,
@@ -214,7 +213,7 @@ async def parse_and_tailor_resume(
             db_resume = crud.resume.get_resume(db, resume_id=resume_id_to_update, owner_id=current_user.id)
             if db_resume:
                 logger.info(f"Updating structured data for resume ID: {resume_id_to_update}")
-                update_schema = schemas.ResumeUpdate(structured_data=structured_resume)
+                update_schema = schemas.resume.ResumeUpdate(structured_data=structured_resume) # Correct path
                 crud.resume.update_resume(db=db, db_resume=db_resume, resume_in=update_schema)
             else:
                 logger.warning(f"Resume ID {resume_id_to_update} not found for user {current_user.id}. Structured data not saved.")
@@ -223,7 +222,7 @@ async def parse_and_tailor_resume(
              logger.warning("No resume_id provided in the request. Structured data not saved.")
              # Handle cases where no ID is given - perhaps create a new default resume?
 
-        return schemas.ResumeParseResponse(
+        return ResumeParseResponse( # Use directly imported schema
             structured_resume=structured_resume,
             message="Resume processed and tailored successfully (using placeholder logic)."
         )

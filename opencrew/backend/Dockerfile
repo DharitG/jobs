@@ -1,9 +1,9 @@
 # ---- Builder Stage ----
-FROM python:3.11-slim as builder
+FROM python:3.11.9-slim AS builder
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100
@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir playwright # Ensure playwright itself is installe
 RUN playwright install chromium # Install only chromium browser
 
 # ---- Final Stage ----
-FROM python:3.11-slim as final
+FROM python:3.11.9-slim AS final
 
 # Create a non-root user
 ENV PYTHONUSERBASE=/home/appuser/.local

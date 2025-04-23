@@ -225,7 +225,12 @@ Rewritten Objective/Summary (Return ONLY the rewritten text):"""
         # --- Tailor Skills ---
         logger.info("Tailoring skills using Azure LLM...")
         if structured_data.skills:
-            current_skills_str = ", ".join([skill.name for skill in structured_data.skills])
+            # Correctly extract all skill strings from the list of SkillItem objects
+            all_skill_strings = []
+            for skill_item in structured_data.skills:
+                all_skill_strings.extend(skill_item.skills)
+            current_skills_str = ", ".join(set(all_skill_strings)) # Use set to avoid duplicates
+
             skills_system_prompt = "You are a resume analysis assistant. Analyze the provided skill list and the target job description. Identify and return ONLY a comma-separated list of the most relevant skills from the original list that align strongly with the job requirements. Prioritize skills explicitly mentioned or strongly implied in the job description."
             skills_user_prompt = f"""Analyze the following list of skills based on the target job description and return a comma-separated list of the most relevant skills.
 
@@ -245,11 +250,16 @@ Most Relevant Skills (Return ONLY a comma-separated list):"""
             if tailored_skills_str:
                 # Parse the response and update the skills list
                 relevant_skill_names = [s.strip() for s in tailored_skills_str.split(',') if s.strip()]
-                # Replace original skills with the tailored list (simple approach)
-                structured_data.skills = [SkillItem(name=name, category="Relevant Skills") for name in relevant_skill_names]
-                logger.info(f"Successfully tailored skills. Identified {len(structured_data.skills)} relevant skills.")
+                # Replace original skills with a single SkillItem containing the relevant skills
+                if relevant_skill_names:
+                    structured_data.skills = [SkillItem(category="Relevant Skills", skills=relevant_skill_names)]
+                    logger.info(f"Successfully tailored skills. Identified {len(relevant_skill_names)} relevant skills.")
+                else:
+                    structured_data.skills = [] # Clear skills if LLM returns empty relevant list
+                    logger.info("No relevant skills identified by LLM after tailoring.")
             else:
-                logger.warning("Failed to tailor skills or LLM response was empty.")
+                logger.warning("Failed to tailor skills or LLM response was empty. Keeping original skills.")
+                # Optionally clear skills or keep original: structured_data.skills = []
         else:
             logger.info("No skills found in structured data to tailor.")
 
@@ -259,11 +269,14 @@ Most Relevant Skills (Return ONLY a comma-separated list):"""
         if structured_data.experiences:
             updated_experiences = []
             for i, exp in enumerate(structured_data.experiences):
-                logger.info(f"Tailoring experience item {i+1}/{len(structured_data.experiences)}: {exp.title} at {exp.company}")
-                current_desc = exp.description or "No description provided."
-                if not current_desc or current_desc == "No description provided.":
-                     logger.warning(f"Skipping experience item {i+1} due to missing description.")
-                     updated_experiences.append(exp) # Keep original if no description
+                # Ensure the attribute is 'position' for logging
+                logger.info(f"Tailoring experience item {i+1}/{len(structured_data.experiences)}: {exp.position} at {exp.company}")
+                # Use highlights for tailoring, join list into a newline-separated string
+                current_highlights = exp.highlights or []
+                current_desc = "\n".join(current_highlights) if current_highlights else "No description provided."
+                if not current_highlights:
+                     logger.warning(f"Skipping experience item {i+1} due to missing highlights for tailoring.")
+                     updated_experiences.append(exp) # Keep original if no highlights
                      continue
 
                 exp_system_prompt = "You are an expert resume writer specializing in tailoring experience bullet points. Rewrite the provided bullet points to highlight achievements and responsibilities most relevant to the target job description, using action verbs and quantifying results where possible. Maintain the original number of bullet points if feasible."
@@ -285,10 +298,11 @@ Rewritten Bullet Points (Return ONLY the rewritten bullet points, separated by n
                 tailored_desc = _call_llm(exp_system_prompt, exp_user_prompt, temperature=0.75, max_tokens=len(current_desc.split())*10 + 100) # Estimate token need
 
                 if tailored_desc:
-                    exp.description = tailored_desc
-                    logger.info(f"Successfully tailored description for experience item {i+1}.")
+                    # Split the LLM response back into a list and assign to highlights
+                    exp.highlights = [line.strip() for line in tailored_desc.split('\n') if line.strip()]
+                    logger.info(f"Successfully tailored highlights for experience item {i+1}.")
                 else:
-                    logger.warning(f"Failed to tailor description for experience item {i+1} or LLM response was empty. Keeping original.")
+                    logger.warning(f"Failed to tailor highlights for experience item {i+1} or LLM response was empty. Keeping original highlights.")
                 updated_experiences.append(exp) # Add the (potentially updated) experience back
 
             structured_data.experiences = updated_experiences # Replace with the list containing updated items
@@ -338,10 +352,31 @@ def process_and_tailor_resume(
     structured_data = _parse_resume_with_llm(raw_resume_text)
 
     # 3. Tailor content using LLM (if job description is provided and parsing was successful)
-    if job_description and structured_data and structured_data.objective != "Failed to parse resume content via LLM.": # Check if parsing succeeded
+    # Check if parsing actually succeeded by ensuring objective doesn't start with failure messages
+    parsing_succeeded = True
+    if not structured_data or not structured_data.objective:
+        # Handle cases where structured_data or objective might be None unexpectedly
+        parsing_succeeded = False
+        logger.warning("Skipping tailoring because parsing result or objective is missing.")
+    else:
+        # Check against known failure prefixes set in _parse_resume_with_llm
+        failure_prefixes = (
+            "Failed to parse resume content via LLM.",
+            "Failed to parse LLM JSON response.",
+            "LLM response failed validation.",
+            "Unexpected error processing LLM response."
+            # Add any other potential failure messages here
+        )
+        if structured_data.objective.startswith(failure_prefixes):
+            parsing_succeeded = False
+            logger.warning(f"Skipping tailoring because initial parsing failed with message: {structured_data.objective}")
+
+    if job_description and parsing_succeeded:
         structured_data = tailor_content(structured_data, job_description)
     elif not job_description:
         logger.info("No job description provided, skipping LLM tailoring.")
+    # The 'elif parsing_failed' case is covered by the updated parsing_succeeded logic
+
 
     logger.info("Resume processing and tailoring finished.")
     return structured_data

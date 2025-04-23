@@ -9,7 +9,7 @@ from typing import List, Optional
 import yaml # Add yaml import
 import os # Add os import
 
-from .. import schemas
+from ..schemas.job import JobCreate # Import JobCreate directly
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,10 +34,10 @@ def parse_relative_date(date_str: str) -> datetime | None:
 
 # --- Scraper Functions ---
 
-def scrape_indeed(query: str, location: str, pages: int = 1) -> List[schemas.JobCreate]:
+def scrape_indeed(query: str, location: str, pages: int = 1) -> List[JobCreate]: # Use direct import
     """Scrapes job listings from Indeed using Playwright."""
     logger.info(f"Starting Indeed Playwright scrape for query='{query}', location='{location}', pages={pages}")
-    jobs: List[schemas.JobCreate] = []
+    jobs: List[JobCreate] = [] # Use direct import
     # Selectors (These might need frequent updates based on Indeed's changes)
     # Using data-testid where possible for potentially better stability
     job_card_selector = 'div.job_seen_beacon' # Main container for each job card
@@ -139,7 +139,7 @@ def scrape_indeed(query: str, location: str, pages: int = 1) -> List[schemas.Job
 
 
                     if title != "N/A" and company != "N/A" and job_url:
-                        job_data = schemas.JobCreate(
+                        job_data = JobCreate( # Use direct import
                             title=title.strip(),
                             company=company.strip(),
                             location=location_text.strip(),
@@ -172,7 +172,7 @@ def scrape_indeed(query: str, location: str, pages: int = 1) -> List[schemas.Job
     return jobs
 
 
-def scrape_greenhouse(company_board_token: str) -> List[schemas.JobCreate]:
+def scrape_greenhouse(company_board_token: str) -> List[JobCreate]: # Use direct import
     """Scrapes jobs from a Greenhouse board using its API endpoint.
 
     Args:
@@ -180,7 +180,7 @@ def scrape_greenhouse(company_board_token: str) -> List[schemas.JobCreate]:
                              (e.g., 'airbnb' from boards.greenhouse.io/airbnb).
     """
     logger.info(f"Starting Greenhouse scrape for board token: {company_board_token}")
-    jobs: List[schemas.JobCreate] = []
+    jobs: List[JobCreate] = [] # Use direct import
     # Greenhouse often provides a JSON API endpoint
     api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_board_token}/jobs?content=true"
     headers = {
@@ -224,7 +224,7 @@ def scrape_greenhouse(company_board_token: str) -> List[schemas.JobCreate]:
                      logger.warning(f"Could not parse Greenhouse date format: {date_posted_str}")
 
             if title and url:
-                 job_data = schemas.JobCreate(
+                 job_data = JobCreate( # Use direct import
                      title=title,
                      company=company_board_token, # Use token as placeholder company name
                      location=location_name,
@@ -243,7 +243,7 @@ def scrape_greenhouse(company_board_token: str) -> List[schemas.JobCreate]:
     logger.info(f"Finished Greenhouse scrape for {company_board_token}. Found {len(jobs)} valid jobs.")
     return jobs
 
-def scrape_lever(company_site_tag: str) -> List[schemas.JobCreate]:
+def scrape_lever(company_site_tag: str) -> List[JobCreate]: # Use direct import
     """Scrapes jobs from a Lever board using its API endpoint.
 
     Args:
@@ -251,7 +251,7 @@ def scrape_lever(company_site_tag: str) -> List[schemas.JobCreate]:
                          (e.g., 'lever' from jobs.lever.co/lever).
     """
     logger.info(f"Starting Lever scrape for site tag: {company_site_tag}")
-    jobs: List[schemas.JobCreate] = []
+    jobs: List[JobCreate] = [] # Use direct import
     # Lever provides a JSON API endpoint
     api_url = f"https://api.lever.co/v0/postings/{company_site_tag}?mode=json"
     headers = {
@@ -299,7 +299,7 @@ def scrape_lever(company_site_tag: str) -> List[schemas.JobCreate]:
             company = company_site_tag
 
             if title and url:
-                job_data = schemas.JobCreate(
+                job_data = JobCreate( # Use direct import
                     title=title,
                     company=company,
                     location=location_name,
@@ -319,9 +319,9 @@ def scrape_lever(company_site_tag: str) -> List[schemas.JobCreate]:
     return jobs
 
 # --- Main Scraper Function ---
-def run_scrapers() -> List[schemas.JobCreate]:
+def run_scrapers() -> List[JobCreate]: # Use direct import
     """Run scrapers based on the configuration in ../crawler/sites.yml."""
-    all_jobs: List[schemas.JobCreate] = []
+    all_jobs: List[JobCreate] = [] # Use direct import
     sites_config = []
 
     # Construct the path to sites.yml relative to this script's directory

@@ -6,7 +6,8 @@ import logging # Added
 from qdrant_client.http.models import Distance, VectorParams, PointStruct, UpdateStatus # Added
 
 from ..core.config import settings
-from .. import models, schemas # Assuming we might work with models/schemas
+from .. import schemas # Import schemas only
+from ..models.job import Job # Import Job model directly
 
 # Setup logger
 logger = logging.getLogger(__name__) # Added
@@ -68,7 +69,7 @@ def get_embedding(text: str) -> List[float] | None:
 
 # Old rank_jobs function removed, replaced by Qdrant search
 
-def index_job(job: models.Job, job_embedding: List[float]):
+def index_job(job: Job, job_embedding: List[float]): # Use direct import
     """Indexes a job's embedding and metadata into Qdrant."""
     if not qdrant_db:
         logger.error("Qdrant client not available. Cannot index job.")

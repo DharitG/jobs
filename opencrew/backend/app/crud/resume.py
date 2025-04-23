@@ -2,31 +2,33 @@ from sqlalchemy.orm import Session
 from typing import List, Union, Optional
 import logging
 
-from .. import models, schemas
+# Import schemas directly
+from ..schemas.resume import ResumeCreate, ResumeUpdate
+from ..models.resume import Resume # Import Resume model directly
 from ..services import matching # Import matching service
 
 logger = logging.getLogger(__name__)
 
-def get_resume(db: Session, resume_id: int, owner_id: int) -> Optional[models.Resume]:
+def get_resume(db: Session, resume_id: int, owner_id: int) -> Optional[Resume]: # Use direct model import
     """
     Gets a specific resume by its ID and owner ID.
     """
-    return db.query(models.Resume).filter(models.Resume.id == resume_id, models.Resume.owner_id == owner_id).first()
+    return db.query(Resume).filter(Resume.id == resume_id, Resume.owner_id == owner_id).first() # Use direct model import
 
 def get_resumes_by_owner(
     db: Session, owner_id: int, skip: int = 0, limit: int = 100
-) -> List[models.Resume]:
+) -> List[Resume]: # Use direct model import
     """
     Gets all resumes belonging to a specific owner.
     """
-    return db.query(models.Resume).filter(models.Resume.owner_id == owner_id).offset(skip).limit(limit).all()
+    return db.query(Resume).filter(Resume.owner_id == owner_id).offset(skip).limit(limit).all() # Use direct model import
 
 def create_resume(
     db: Session,
-    resume_in: schemas.ResumeCreate, # Rename parameter for clarity
+    resume_in: ResumeCreate, # Use direct schema import
     owner_id: int,
     original_filepath: Optional[str] = None # Add optional parameter for S3 key
-) -> models.Resume:
+) -> Resume: # Use direct model import
     """
     Creates a new resume for a specific owner.
     """
@@ -40,7 +42,7 @@ def create_resume(
          #    resume_data["structured_data"] = resume_in.structured_data
 
     # NOTE: Embedding generation logic should be added here or in a service layer later
-    db_resume = models.Resume(
+    db_resume = Resume( # Use direct model import
         **resume_data,
         owner_id=owner_id,
         original_filepath=original_filepath # Set the filepath from the parameter
@@ -51,8 +53,8 @@ def create_resume(
     return db_resume
 
 def update_resume(
-    db: Session, db_resume: models.Resume, resume_in: schemas.ResumeUpdate
-) -> models.Resume:
+    db: Session, db_resume: Resume, resume_in: ResumeUpdate # Use direct schema import
+) -> Resume: # Use direct model import
     """
     Updates an existing resume.
     """
@@ -71,7 +73,7 @@ def update_resume(
     db.refresh(db_resume)
     return db_resume
 
-def remove_resume(db: Session, resume_id: int, owner_id: int) -> Optional[models.Resume]:
+def remove_resume(db: Session, resume_id: int, owner_id: int) -> Optional[Resume]: # Use direct model import
     """
     Deletes a resume by its ID and owner ID.
     Returns the deleted resume or None if not found.

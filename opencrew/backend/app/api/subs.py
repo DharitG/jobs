@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session
 import stripe # Import stripe library
 
 import os # Need os for FRONTEND_BASE_URL placeholder
-from app import crud, schemas # Import crud and schemas
+from app import crud # Import crud only
+from app.schemas.payment import StripeCheckoutSession # Import payment schema directly
 from app.models.user import User, SubscriptionTier # Import User and Enum
 from app.schemas.payment import CheckoutRequest # Absolute import
 from app.schemas.user import UserUpdate # Absolute import
-from app.core import security # Absolute import
+# Remove incorrect security import for user dependency
+from app.api.users import get_current_active_user # Import the correct user dependency function
 from app.db.session import get_db # Absolute import
 from app.core.config import settings # Absolute import
 
@@ -27,11 +29,11 @@ else:
 # TODO: Define STRIPE_WEBHOOK_SECRET in settings for webhook verification
 # endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
 
-@router.post("/create-checkout-session", response_model=schemas.StripeCheckoutSession) # Correctly references the schema now
+@router.post("/create-checkout-session", response_model=StripeCheckoutSession) # Use direct import
 async def create_checkout_session(
     checkout_request: CheckoutRequest, # Use the input schema
     db: Session = Depends(get_db),
-    current_user: User = Depends(security.get_current_active_user) # Use imported User type
+    current_user: User = Depends(get_current_active_user) # Use the correctly imported dependency
 ):
     """
     Creates a Stripe Checkout session for the user to subscribe.
@@ -88,7 +90,7 @@ async def create_checkout_session(
         
         logger.info(f"Created Stripe checkout session {checkout_session.id} for user {current_user.id}")
 
-        return schemas.StripeCheckoutSession(
+        return StripeCheckoutSession( # Use direct import
             session_id=checkout_session.id,
             url=checkout_session.url # Return the actual checkout URL
         )
@@ -262,7 +264,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
             # Find user by customer ID (assuming customer ID is reliably stored)
             # Alternatively, query based on subscription ID if stored uniquely
-            db_user = db.query(models.User).filter(models.User.stripe_customer_id == stripe_customer_id).first()
+            db_user = db.query(User).filter(User.stripe_customer_id == stripe_customer_id).first() # Use imported User
             if not db_user:
                  logger.error(f"Subscription update: User not found for Stripe Customer ID: {stripe_customer_id}, Sub ID: {stripe_subscription_id}")
                  return {"status": "error", "detail": "User not found for customer ID"}
@@ -291,7 +293,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             stripe_subscription_id = subscription.get('id') # Get ID for logging/lookup if needed
 
             # Find user by customer ID
-            db_user = db.query(models.User).filter(models.User.stripe_customer_id == stripe_customer_id).first()
+            db_user = db.query(User).filter(User.stripe_customer_id == stripe_customer_id).first() # Use imported User
             if not db_user:
                  # Alternatively, lookup by subscription ID if that's reliably stored and unique
                  # db_user = db.query(models.User).filter(models.User.stripe_subscription_id == stripe_subscription_id).first()
