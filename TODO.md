@@ -74,3 +74,9 @@
 
 ---
 *Removed sections related to non-core features (Gamification, VisaPulse, Slack, etc.), deprecated items, advanced infrastructure (Observability, Compliance, RBAC beyond basic needs), and manual tasks.*
+
+### Backend Startup Warnings (To Investigate)
+- [ ] Qdrant: `UserWarning: Api key is used with an insecure connection.` (See `services/matching.py:29`) - Investigate if HTTPS/secure connection is needed/possible.
+- [ ] PDF Generation: `WARNING [root] Could not import resume_pdf_styles or fonts from open_source_reuse: No module named 'open_source_reuse'. Using basic styles.` - Ensure `open_source_reuse` is installed correctly or remove dependency.
+- [ ] Resume Ingestion: `WARNING [app.services.resume_optimizer] unoconv command not found.` - Install `unoconv` and LibreOffice or find alternative for doc conversion.
+- [ ] Resume Parsing: `WARNING [app.services.resume_optimizer] spaCy model 'en_core_web_sm' not found.` - Download the model (`python -m spacy download en_core_web_sm`).

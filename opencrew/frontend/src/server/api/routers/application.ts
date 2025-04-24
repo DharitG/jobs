@@ -36,15 +36,16 @@ const updateStatusInputSchema = z.object({
 export const applicationRouter = createTRPCRouter({
   list: protectedProcedure // Requires user to be logged in
     .query(async ({ ctx }) => {
-      // Use ctx.session.user.sub which matches our placeholder Session type
-      const userId = ctx.session?.user?.sub;
-      console.log("Attempting to fetch applications for user:", userId); 
+      // Access user and token directly from the context populated by the middleware
+      const userId = ctx.user.id; // Access the user ID directly from ctx.user
+      const accessToken = ctx.accessToken; // Access the token directly from ctx.accessToken
+      console.log("Attempting to fetch applications for user:", userId);
 
-      // 1. Get Access Token (from placeholder session for now)
-      const accessToken = ctx.session?.accessToken;
+      // The protectedProcedure already ensures user and accessToken exist.
+      // Redundant checks can be removed, but keeping this one for extra safety is fine.
       if (!accessToken) {
-        // This should technically be caught by enforceUserIsAuthed middleware, but double-check
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Access token not found in session.' });
+        // This check is somewhat redundant due to protectedProcedure but acts as a safeguard.
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Access token missing after authentication middleware.' });
       }
 
       // 2. Construct Backend API URL
@@ -127,13 +128,15 @@ export const applicationRouter = createTRPCRouter({
     .input(updateStatusInputSchema)
     .mutation(async ({ ctx, input }) => {
       const { applicationId, newStatus } = input;
-      const userId = ctx.session?.user?.sub;
-      const accessToken = ctx.session?.accessToken;
+      // Access user and token directly from the context
+      const userId = ctx.user.id;
+      const accessToken = ctx.accessToken;
 
       console.log(`Attempting to update application ${applicationId} to status ${newStatus} for user ${userId}`);
 
+      // Redundant check, protectedProcedure guarantees accessToken exists
       if (!accessToken) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Access token not found.' });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Access token missing after authentication middleware.' });
       }
 
       // Construct backend URL for the specific application

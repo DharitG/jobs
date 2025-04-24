@@ -3,25 +3,25 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy import func, extract
 
-from .. import models, schemas
-from ..models.application import ApplicationStatus # Ensure status enum is available
-from ..models.user import SubscriptionTier # Import user tier enum
+from ..models.user import User, SubscriptionTier # Import User model and tier enum
+from ..models.application import Application, ApplicationStatus # Import Application model and status enum
+from ..schemas.application import ApplicationCreate, ApplicationUpdate # Import specific schemas
 
 # Define free tier limit
 FREE_TIER_AUTO_APPLY_LIMIT = 50
 
-def get_application(db: Session, application_id: int) -> Optional[models.Application]:
+def get_application(db: Session, application_id: int) -> Optional[Application]:
     """Get a single application by ID."""
-    return db.query(models.Application).filter(models.Application.id == application_id).first()
+    return db.query(Application).filter(Application.id == application_id).first()
 
 def get_applications_by_user(
     db: Session, user_id: int, skip: int = 0, limit: int = 100
-) -> List[models.Application]:
+) -> List[Application]:
     """Get all applications for a specific user."""
     return (
-        db.query(models.Application)
-        .filter(models.Application.user_id == user_id)
-        .order_by(models.Application.status_last_updated_at.desc()) # Example ordering
+        db.query(Application)
+        .filter(Application.user_id == user_id)
+        .order_by(Application.status_last_updated_at.desc()) # Example ordering
         .offset(skip)
         .limit(limit)
         .all()
@@ -29,11 +29,11 @@ def get_applications_by_user(
 
 def get_application_by_user_and_job(
     db: Session, user_id: int, job_id: int
-) -> Optional[models.Application]:
+) -> Optional[Application]:
     """Get a specific application for a user and job (to prevent duplicates)."""
     return (
-        db.query(models.Application)
-        .filter(models.Application.user_id == user_id, models.Application.job_id == job_id)
+        db.query(Application)
+        .filter(Application.user_id == user_id, Application.job_id == job_id)
         .first()
     )
 
@@ -43,19 +43,19 @@ def count_monthly_auto_applies(db: Session, user_id: int) -> int:
     # Count applications from the start of the current month
     start_of_month = datetime(now.year, now.month, 1)
     
-    count = db.query(func.count(models.Application.id)).filter(
-        models.Application.user_id == user_id,
-        models.Application.status.in_([ApplicationStatus.APPLIED, ApplicationStatus.APPLYING]),
+    count = db.query(func.count(Application.id)).filter(
+        Application.user_id == user_id,
+        Application.status.in_([ApplicationStatus.APPLIED, ApplicationStatus.APPLYING]),
         # Check based on when the status was last updated or applied_at
         # Using status_last_updated_at might be simpler if 'applying' is brief
-        models.Application.status_last_updated_at >= start_of_month 
+        Application.status_last_updated_at >= start_of_month
         # Alternatively, check applied_at if only counting fully applied:
-        # models.Application.applied_at >= start_of_month
+        # Application.applied_at >= start_of_month
     ).scalar()
     
     return count or 0 # Return 0 if count is None
 
-def check_auto_apply_quota(db: Session, user: models.User) -> bool:
+def check_auto_apply_quota(db: Session, user: User) -> bool:
     """Checks if the user is allowed to perform another auto-apply based on their tier and usage.
     
     Returns:
@@ -77,8 +77,8 @@ def check_auto_apply_quota(db: Session, user: models.User) -> bool:
     return False 
 
 def create_application(
-    db: Session, *, application_in: schemas.ApplicationCreate, user_id: int
-) -> models.Application:
+    db: Session, *, application_in: ApplicationCreate, user_id: int
+) -> Application:
     """Create a new application record (e.g., when a user saves a job)."""
     # Check if application already exists for this user/job
     existing_application = get_application_by_user_and_job(db, user_id=user_id, job_id=application_in.job_id)
@@ -86,8 +86,8 @@ def create_application(
         # Optionally update status or return existing? For now, raise error.
         raise ValueError(f"Application for user {user_id} and job {application_in.job_id} already exists.")
 
-    db_application = models.Application(
-        **application_in.model_dump(), 
+    db_application = Application(
+        **application_in.model_dump(),
         user_id=user_id
     )
     db.add(db_application)
@@ -96,8 +96,8 @@ def create_application(
     return db_application
 
 def update_application(
-    db: Session, *, db_application: models.Application, application_in: schemas.ApplicationUpdate
-) -> models.Application:
+    db: Session, *, db_application: Application, application_in: ApplicationUpdate
+) -> Application:
     """Update an existing application (e.g., change status, add notes)."""
     update_data = application_in.model_dump(exclude_unset=True)
     
@@ -117,16 +117,16 @@ def update_application(
     return db_application
 
 def update_application_status(
-    db: Session, application_id: int, status: models.ApplicationStatus
-) -> Optional[models.Application]:
+    db: Session, application_id: int, status: ApplicationStatus
+) -> Optional[Application]:
     """Helper function to specifically update only the status."""
     db_app = get_application(db, application_id)
     if not db_app:
         return None
-    update_schema = schemas.ApplicationUpdate(status=status)
+    update_schema = ApplicationUpdate(status=status)
     return update_application(db=db, db_application=db_app, application_in=update_schema)
 
-def delete_application(db: Session, *, application_id: int) -> Optional[models.Application]:
+def delete_application(db: Session, *, application_id: int) -> Optional[Application]:
     """Delete an application record."""
     db_application = get_application(db, application_id=application_id)
     if db_application:

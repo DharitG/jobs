@@ -2,15 +2,15 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import type { NextRequest } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'; // Supabase helper
-import { cookies } from 'next/headers'; // To access cookies server-side
-import type { User as SupabaseUser } from '@supabase/supabase-js'; // Supabase User type
-// import { env } from '~/env.js'; // Removed unused Auth0 env vars
+// Import createClient instead of createRouteHandlerClient for manual cookie handling
+import { createClient, type User as SupabaseUser, type SupabaseClient } from '@supabase/supabase-js';
+import { env } from "~/env.js"; // Need env vars for standard client
 
 // Define the structure we expect in the context for authenticated users
 interface AuthContext {
   user: SupabaseUser;
   accessToken: string; // Access token from Supabase session (will be asserted non-null in protected procedure)
+  supabase: SupabaseClient<any>; // Add the request-specific Supabase client instance
 }
 
 /**
@@ -32,10 +32,11 @@ export const createTRPCContext = async (opts: CreateContextOptions) => {
     req: opts.req,
     user: null as SupabaseUser | null, // Initialize user as null
     accessToken: null as string | null, // Initialize accessToken as null
+    supabase: null as SupabaseClient<any> | null, // Initialize supabase client as null
   };
 };
 
-// Define the context type including the user and accessToken potentially added by middleware
+// Define the context type including the user, accessToken, and supabase client potentially added by middleware
 type Context = Awaited<ReturnType<typeof createTRPCContext>> & Partial<AuthContext>;
 
 
@@ -87,38 +88,90 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * Reusable middleware that enforces users are logged in using Supabase.
  */
 const enforceUserIsAuthed = t.middleware(async ({ ctx, next }) => {
-  // Create a Supabase client specific to this server-side request context
-  // Needs cookies from the request to determine authentication state.
-  const cookieStore = cookies(); // Get cookie store from Next.js headers
-  // Explicitly type Database as any if types are not generated/available
-  const supabase = createRouteHandlerClient<any>({ cookies: () => cookieStore });
+  // --- Manual Cookie Handling Approach ---
+  const supabase = createClient(
+    env.NEXT_PUBLIC_SUPABASE_URL!,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    // 1. Get the combined auth cookie
+    const authCookieName = 'sb-lcrhinqqwewlvprvqzvn-auth-token'; // Use the name found in browser
+    const authCookie = ctx.req.cookies.get(authCookieName);
 
-    if (error) {
-        console.error("[Auth Middleware] Supabase getSession error:", error.message);
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to get session.' });
+    let user: SupabaseUser | null = null;
+    let currentAccessToken: string | null = null;
+    let currentRefreshToken: string | null = null;
+
+    if (authCookie?.value) {
+       try {
+         // 2. Parse the JSON array from the cookie value
+         const sessionData = JSON.parse(authCookie.value);
+         if (Array.isArray(sessionData) && sessionData.length >= 2) {
+             currentAccessToken = sessionData[0]; // First element is Access Token
+             currentRefreshToken = sessionData[1]; // Second element is Refresh Token
+         } else {
+              console.warn(`[Auth Middleware] Invalid format found in cookie ${authCookieName}`);
+         }
+       } catch (parseError) {
+            console.error(`[Auth Middleware] Failed to parse JSON from cookie ${authCookieName}:`, parseError);
+       }
+    } else {
+        console.log(`[Auth Middleware] Auth cookie '${authCookieName}' not found.`);
     }
 
-    if (!session || !session.user || !session.access_token) {
-      console.log("[Auth Middleware] No active Supabase session, user, or access token found.");
+    // Proceed only if we successfully extracted both tokens
+    if (currentAccessToken && currentRefreshToken) {
+      // 3. Set the session in the Supabase client manually
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: currentAccessToken,
+        refresh_token: currentRefreshToken,
+      });
+
+      if (sessionError) {
+        console.error("[Auth Middleware] Supabase setSession error:", sessionError.message);
+        // Don't throw yet, try getUser to see if session is still somehow valid or if token is expired
+      }
+
+      // 4. Verify the user with the manually set session
+      const { data: { user: sessionUser }, error: getUserError } = await supabase.auth.getUser();
+
+      if (getUserError) {
+        // Log specific getUser errors (e.g., invalid JWT, expired token)
+        console.error(`[Auth Middleware] Supabase getUser error after setSession (Code: ${getUserError.code}): ${getUserError.message}`);
+        // Only proceed as unauthenticated if getUser fails for reasons other than token issues handled by setSession
+      } else if (sessionUser) {
+        console.log("[Auth Middleware] Supabase session verified via manual setSession for user:", sessionUser.id);
+        user = sessionUser;
+        // Access token is already assigned to currentAccessToken from parsed cookie
+      } else {
+         console.log("[Auth Middleware] No active Supabase user could be derived after setSession.");
+      }
+    }
+    // else: Handled by the check below if tokens weren't extracted
+
+
+    // 5. Check if authentication was successful (user and token must be non-null)
+    if (!user || !currentAccessToken) {
+       // Log details if auth failed after attempting token extraction
+       if (currentAccessToken || currentRefreshToken) {
+           console.log("[Auth Middleware] Authentication failed despite finding tokens. User invalid or expired?");
+       }
       throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated." });
     }
 
-    console.log("[Auth Middleware] Supabase session verified for user:", session.user.id);
-
-    // Add the validated Supabase user object and access token to the context
+    // 6. Add the validated Supabase user object, access token, and client instance to the context
     return next({
       ctx: {
         ...ctx, // Keep existing context (headers, req)
-        user: session.user, // Add the Supabase user object
-        accessToken: session.access_token, // Add the access token
+        user: user, // Add the Supabase user object
+        accessToken: currentAccessToken, // Add the access token
+        supabase: supabase, // Add the request-specific Supabase client (now standard client)
       },
     });
 
   } catch (error: any) {
-     // Handle potential errors during client creation or session fetching
+     // Handle potential errors during client creation or session verification
      if (error instanceof TRPCError) {
          throw error; // Re-throw known TRPC errors
      }
@@ -136,16 +189,18 @@ export const protectedProcedure = t.procedure
   .use(enforceUserIsAuthed)
   // Add refinement to guarantee user and accessToken are not null in protected procedures type-wise
   .use(opts => {
-      if (!opts.ctx.user || !opts.ctx.accessToken) {
+      // Also ensure the supabase client is present in the context
+      if (!opts.ctx.user || !opts.ctx.accessToken || !opts.ctx.supabase) {
         // This should technically be caught by enforceUserIsAuthed, but good for type safety
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Context enrichment failed.' });
       }
       return opts.next({
         ctx: {
           ...opts.ctx,
-          // Assert user and accessToken are non-null for downstream procedures
+          // Assert user, accessToken, and supabase are non-null for downstream procedures
           user: opts.ctx.user,
           accessToken: opts.ctx.accessToken,
+          supabase: opts.ctx.supabase,
         },
       });
     });

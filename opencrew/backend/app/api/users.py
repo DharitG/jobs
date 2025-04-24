@@ -3,37 +3,70 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import crud # Import crud
-from app.schemas.user import User as UserSchema, UserUpdate # Import User schema specifically and alias it, also import UserUpdate
+from app.schemas.user import User as UserSchema, UserUpdate, UserCreate # Import UserCreate as well
 from app.models.user import User as UserModel # Import User model specifically and alias it
 from app.db.session import get_db # Absolute import
-# Import the new Supabase dependency function
-from app.core.security import get_current_supabase_user_id # Absolute import
+# Import the renamed Supabase dependency function and TokenPayload
+from app.core.security import get_current_token_payload, TokenPayload # Absolute import
 
 router = APIRouter()
 
-# --- Dependency to get current user model from Supabase ID ---
+# --- Dependency to get current user model, creating if not found ---
 
 async def get_current_active_user(
-    # Use the new dependency to get the Supabase user ID (UUID)
-    current_user_id: uuid.UUID = Depends(get_current_supabase_user_id),
+    # Use the renamed dependency to get the full token payload
+    token_payload: TokenPayload = Depends(get_current_token_payload),
     db: Session = Depends(get_db)
 ) -> UserModel: # Use the aliased UserModel type
     """
-    Dependency that verifies Supabase token, gets the user ID (UUID),
-    and fetches the corresponding user from the database.
-    Raises 404 if user not found in DB for a valid token sub.
+    Dependency that verifies Supabase token, gets the user payload,
+    fetches the corresponding user from the database, OR creates the user
+    if they don't exist locally but have a valid token.
+    Raises 401/403 if token invalid/expired (handled by get_current_token_payload).
+    Raises 400 if email is missing from token when creating user.
     Raises 400 if user is inactive.
     """
-    # Use the updated CRUD function
-    user = crud.user.get_user_by_supabase_id(db, supabase_id=current_user_id)
+    # 1. Try to find the user by Supabase ID from the token payload
+    user = crud.user.get_user_by_supabase_id(db, supabase_id=token_payload.sub)
+
+    # 2. If user not found, create them
     if not user:
-        # This case might indicate an issue, e.g., user deleted from DB but token still valid
-        # Or potentially a user created in Supabase but not yet synced/created in our DB.
-        # Depending on the flow, you might want to auto-create the user here.
-        # For now, treat it as an error.
-        raise HTTPException(status_code=404, detail="User not found in database.")
+        print(f"User with Supabase ID {token_payload.sub} not found locally. Attempting to create.") # Add print for debugging
+        # Ensure email exists in the token (needed for UserCreate)
+        if not token_payload.email:
+             # This shouldn't happen if security.py enforces email, but check just in case
+             raise HTTPException(
+                 status_code=status.HTTP_400_BAD_REQUEST,
+                 detail="Cannot create user, email missing from token payload."
+             )
+
+        # Extract full name from metadata if available
+        full_name = token_payload.user_metadata.get("full_name") if token_payload.user_metadata else None
+
+        # Create the user schema
+        user_create_data = UserCreate(
+            supabase_user_id=token_payload.sub,
+            email=token_payload.email,
+            full_name=full_name
+            # Add any other default fields required by UserCreate or your model
+        )
+
+        # Create user in the database
+        try:
+             user = crud.user.create_user(db=db, user=user_create_data)
+             print(f"Successfully created local user for Supabase ID {token_payload.sub}") # Add print for debugging
+        except Exception as e:
+            # Handle potential database errors during creation
+            print(f"Error creating local user for Supabase ID {token_payload.sub}: {e}") # Add print for debugging
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create local user record.",
+            )
+
+    # 3. Check if the user (found or created) is active
     if not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+
     return user
 
 

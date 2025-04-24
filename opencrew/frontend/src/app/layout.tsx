@@ -5,8 +5,7 @@ import { cookies } from "next/headers";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ClientProviders } from "./client-providers"; // Import the client provider wrapper
-import { Navbar } from "~/components/layout/navbar"; // Import Navbar
-import { Footer } from "~/components/layout/footer"; // Import Footer
+import { ConditionalLayout } from "~/components/layout/conditional-layout"; // Import ConditionalLayout
 import { Toaster } from "~/components/ui/toaster"; // Import Toaster
 
 const inter = Inter({
@@ -57,10 +56,7 @@ export default function RootLayout({
       <body className={`font-sans ${inter.variable}`}>
         <TRPCReactProvider> {/* Removed cookies prop */}
           <ClientProviders> {/* Wrap content with ClientProviders */}
-            <Navbar /> {/* Add Navbar */}
-            {/* Apply negative top margin to pull main content under navbar */}
-            <main className="mt-[-72px]">{children}</main>
-            <Footer /> {/* Add Footer */}
+            <ConditionalLayout>{children}</ConditionalLayout> {/* Use ConditionalLayout */}
             <Toaster /> {/* Add Toaster for notifications */}
           </ClientProviders>
         </TRPCReactProvider>

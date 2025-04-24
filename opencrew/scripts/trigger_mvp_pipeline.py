@@ -1,3 +1,12 @@
+import os
+from dotenv import load_dotenv
+
+# Construct the path to the .env file relative to this script
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', 'backend', '.env')
+load_dotenv(dotenv_path=dotenv_path)
+
+# Now imports that rely on settings will work
+
 import argparse
 import logging
 import asyncio
@@ -18,7 +27,11 @@ if project_root not in sys.path:
 # Need to adjust imports based on actual project structure and where DB session/services are accessible
 # This assumes the script is run from the 'backend' directory or the Python path is set correctly.
 from app.db.session import SessionLocal
-from app import crud, schemas
+from app import schemas
+from app.crud import user as crud_user
+from app.crud import resume as crud_resume
+from app.crud import job as crud_job
+from app.crud import application as crud_application
 from app.models.job import Job # Import specific Job model
 from app.models.application import Application, ApplicationStatus # Import specific Application model and Enum
 from app.services import matching
@@ -35,7 +48,7 @@ async def run_mvp_pipeline(db: Session, user_id: int):
     logger.info(f"Starting MVP pipeline trigger for user_id: {user_id}")
 
     # 1. Get User
-    user = crud.user.get_user(db, user_id=user_id)
+    user = crud_user.get_user(db, user_id=user_id)
     if not user:
         logger.error(f"User with ID {user_id} not found.")
         return
@@ -43,7 +56,7 @@ async def run_mvp_pipeline(db: Session, user_id: int):
 
     # 2. Get User's latest resume with structured_data
     # Assuming the latest resume is the one we want to use
-    resumes = crud.resume.get_resumes_by_owner(db, owner_id=user_id, limit=1, skip=0) # Get the most recent one
+    resumes = crud_resume.get_resumes_by_owner(db, owner_id=user_id, limit=1, skip=0) # Get the most recent one
     if not resumes:
         logger.error(f"No resumes found for user {user_id}.")
         return
@@ -64,7 +77,7 @@ async def run_mvp_pipeline(db: Session, user_id: int):
 
 
     # 3. Get a few sample jobs from the DB
-    jobs = crud.job.get_jobs(db, skip=0, limit=5) # Get 5 jobs for testing
+    jobs = crud_job.get_jobs(db, skip=0, limit=5) # Get 5 jobs for testing
     if not jobs:
         logger.error("No jobs found in the database to match against.")
         return
@@ -124,7 +137,7 @@ async def run_mvp_pipeline(db: Session, user_id: int):
                 job_id=job_id,
                 resume_id=latest_resume.id # Link the latest resume
             )
-            application = crud.application.create_user_application(
+            application = crud_application.create_user_application(
                 db=db, application=application_create, user_id=user_id
             )
             db.flush() # Ensure ID is generated if needed immediately

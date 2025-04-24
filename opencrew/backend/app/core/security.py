@@ -2,7 +2,7 @@ import uuid # For UUID type hint
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr # Import EmailStr
 import logging
 
 from .config import settings # Assuming settings are loaded here
@@ -17,13 +17,14 @@ ALGORITHMS = ["HS256"] # Supabase uses HS256
 
 class TokenPayload(BaseModel):
     sub: uuid.UUID # Subject (Supabase User ID as UUID)
-    # Add other standard JWT claims if needed for validation (e.g., iss, aud, exp)
-    # exp: int | None = None
-    # iss: str | None = None
-    # aud: str | None = None # Often 'authenticated' for Supabase
+    email: EmailStr | None = None # Add email, make optional initially
+    user_metadata: dict | None = None # Add user_metadata, make optional
+    # exp: int | None = None # Example: If expiration check needed separate from jwt.decode
+    # aud: str | None = None # Example: If audience check needed separate from jwt.decode
 
 # Scheme for bearer token authentication
 token_auth_scheme = HTTPBearer()
+
 
 async def verify_token(token: HTTPAuthorizationCredentials = Depends(token_auth_scheme)) -> TokenPayload:
     """
@@ -51,26 +52,40 @@ async def verify_token(token: HTTPAuthorizationCredentials = Depends(token_auth_
             SUPABASE_JWT_SECRET,
             algorithms=ALGORITHMS,
             # Optionally add audience and issuer validation if needed
-            # audience="authenticated", # Default Supabase audience
-            # issuer=SUPABASE_ISSUER,
+            audience="authenticated", # Default Supabase audience (Uncommented)
+            # issuer=SUPABASE_ISSUER, # Keep issuer commented unless specifically needed and configured
             options={"verify_exp": True} # Default: verify expiration
         )
 
-        # Extract subject (user ID) and validate its type
+        # Extract claims
         user_id_str: str | None = payload.get("sub")
+        email_str: str | None = payload.get("email") # Extract email
+        user_meta: dict | None = payload.get("user_metadata") # Extract metadata
+
+        # --- Validate Subject (User ID) ---
         if user_id_str is None:
             logger.warning("Token payload missing 'sub' (user ID) claim.")
             raise credentials_exception
-
         try:
             user_id_uuid = uuid.UUID(user_id_str)
         except ValueError:
              logger.warning(f"Token 'sub' claim is not a valid UUID: {user_id_str}")
              raise credentials_exception
 
-        # You could add role/permission checks here based on payload['user_role'] or custom claims if set up in Supabase
+        # --- Validate Email (Optional but recommended for user creation) ---
+        # If email is strictly required downstream (like for user creation), enforce it here:
+        if email_str is None:
+             logger.warning("Token payload missing 'email' claim.")
+             # Depending on use case, you might allow tokens without email or raise error:
+             # raise credentials_exception # Uncomment if email is mandatory
 
-        token_data = TokenPayload(sub=user_id_uuid)
+        # --- Create TokenPayload ---
+        # Pydantic will validate EmailStr format if email_str is provided
+        token_data = TokenPayload(
+            sub=user_id_uuid,
+            email=email_str,
+            user_metadata=user_meta
+        )
 
     except JWTError as e:
         logger.warning(f"JWTError during Supabase token validation: {e}")
@@ -89,13 +104,11 @@ async def verify_token(token: HTTPAuthorizationCredentials = Depends(token_auth_
 
     return token_data
 
-# --- FastAPI Dependency ---
-async def get_current_supabase_user_id(token_payload: TokenPayload = Depends(verify_token)) -> uuid.UUID:
+# --- FastAPI Dependency (Renamed) ---
+async def get_current_token_payload(token_payload: TokenPayload = Depends(verify_token)) -> TokenPayload:
     """
-    FastAPI dependency that verifies the Supabase token and returns the user ID (UUID).
-    Use this in your path operations to protect endpoints and get the user's ID.
-    Example: current_user_id: uuid.UUID = Depends(get_current_supabase_user_id)
+    FastAPI dependency that verifies the Supabase token and returns the full TokenPayload.
+    Use this in your path operations to protect endpoints and get user info.
+    Example: payload: TokenPayload = Depends(get_current_token_payload)
     """
-    # You could fetch the full user object from DB here using the ID if needed
-    # user = crud.user.get_user_by_supabase_id(db, supabase_id=token_payload.sub) ...
-    return token_payload.sub
+    return token_payload

@@ -24,9 +24,9 @@ export const jobRouter = createTRPCRouter({
     .input(z.object({ limit: z.number().optional().default(20) }))
     .output(z.array(jobSchema)) // Define the expected output shape
     .query(async ({ ctx, input }) => {
-      const userSub = ctx.session.user.sub; // Use 'sub' from Auth0 session context
+      const userId = ctx.user.id; // Access the user ID directly from ctx.user
 
-      console.log(`Fetching matched jobs for user: ${userSub}`);
+      console.log(`Fetching matched jobs for user: ${userId}`);
 
       // --- Step 1: Get User's Resume Embedding (Requires Backend API Endpoint) ---
       let resumeEmbedding: number[] | null = null;
@@ -44,7 +44,7 @@ export const jobRouter = createTRPCRouter({
         // resumeEmbedding = Array(384).fill(0.1); // Example embedding
 
         if (!resumeEmbedding) {
-           console.log(`User ${userSub} has no resume embedding found.`);
+           console.log(`User ${userId} has no resume embedding found.`);
            return []; // Return empty if no embedding
         }
 
@@ -76,7 +76,7 @@ export const jobRouter = createTRPCRouter({
           // matchedJobIds = [1, 5, 10]; // Example job IDs
 
           if (matchedJobIds.length === 0) {
-              console.log(`No similar jobs found for user ${userSub}`);
+              console.log(`No similar jobs found for user ${userId}`);
               return [];
           }
 

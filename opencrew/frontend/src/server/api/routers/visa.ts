@@ -30,13 +30,14 @@ const MOCK_VISA_DATA = [
 export const visaRouter = createTRPCRouter({
   listTimeline: protectedProcedure
     .query(async ({ ctx }) => {
-      const userId = ctx.session?.user?.sub;
+      // Access user and token directly from the context
+      const userId = ctx.user.id;
+      const accessToken = ctx.accessToken;
       console.log(`Fetching visa timeline for user: ${userId}`);
 
-      // 1. Get Access Token
-      const accessToken = ctx.session?.accessToken;
+      // Redundant check, protectedProcedure guarantees accessToken exists
       if (!accessToken) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Access token not found in session.' });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Access token missing after authentication middleware.' });
       }
 
       // 2. Construct Backend API URL (Assuming endpoint is /visa/timeline)
