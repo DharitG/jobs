@@ -80,3 +80,11 @@
 - [ ] PDF Generation: `WARNING [root] Could not import resume_pdf_styles or fonts from open_source_reuse: No module named 'open_source_reuse'. Using basic styles.` - Ensure `open_source_reuse` is installed correctly or remove dependency.
 - [ ] Resume Ingestion: `WARNING [app.services.resume_optimizer] unoconv command not found.` - Install `unoconv` and LibreOffice or find alternative for doc conversion.
 - [ ] Resume Parsing: `WARNING [app.services.resume_optimizer] spaCy model 'en_core_web_sm' not found.` - Download the model (`python -m spacy download en_core_web_sm`).
+
+## 8. Frontend Dashboard Functionality
+
+*   ⬜ **User Data Display:** Fetch and display real user data (plan, quota, stats) in the header and "Auto Apply Progress" card (`dashboard/page.tsx`).
+*   ⬜ **Preferences Card:** Implement the "Preferences" card to fetch and save user job search criteria via API calls (`dashboard/page.tsx`).
+*   ⬜ **Resumes Card:** Make the "Resumes" card fully functional: fetch existing resumes, handle uploads/deletes via API calls (`dashboard/page.tsx`).
+*   ⬜ **Activity Log Card:** Connect the "Activity Log" card to fetch real activity data from the backend API (`dashboard/page.tsx`, `ActivityLogViewer`).
+*   ⬜ **Header Actions:** Connect the "Upgrade", "Help", and "User Profile" buttons in the header to their respective actions/pages.
